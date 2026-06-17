@@ -5,7 +5,7 @@ import {
   LogOut, Plus, Search, Check, Trash2, Edit2, 
   ListTodo, Clock, CheckSquare, Layers, X, Calendar, User,
   Flag, AlertTriangle, MapPin, Link, Undo2, ChevronRight, Info,
-  ChevronDown, MoreVertical
+  ChevronDown, MoreVertical, Lock
 } from 'lucide-react';
 
 export const Dashboard = () => {
@@ -57,6 +57,7 @@ export const Dashboard = () => {
 
   // User Profile Modal states
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileEmail, setProfileEmail] = useState('');
   const [profileFullName, setProfileFullName] = useState('');
   const [profileCompanyName, setProfileCompanyName] = useState('');
   const [profileDesignation, setProfileDesignation] = useState('');
@@ -65,12 +66,15 @@ export const Dashboard = () => {
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+  const [isEmailConfirmOpen, setIsEmailConfirmOpen] = useState(false);
+  const [isSimpleConfirmOpen, setIsSimpleConfirmOpen] = useState(false);
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTodo, setEditingTodo] = useState(null);
   
-  // New Reminder Form states
+  // New Task Form states
   const [todoTitle, setTodoTitle] = useState('');
   const [todoDescription, setTodoDescription] = useState('');
   const [todoURL, setTodoURL] = useState('');
@@ -86,6 +90,7 @@ export const Dashboard = () => {
   const [hasLocation, setHasLocation] = useState(false);
   const [todoLocation, setTodoLocation] = useState('');
   const [todoSection, setTodoSection] = useState('');
+  const [isCreatingNewSection, setIsCreatingNewSection] = useState(false);
   
   const [modalError, setModalError] = useState('');
 
@@ -185,8 +190,16 @@ export const Dashboard = () => {
   };
 
   const groupedTodos = getGroupedTodos();
+  const existingSections = Array.from(
+    new Set([
+      'Tasks',
+      ...todos
+        .map(t => (t.section_name && t.section_name.trim()) || 'Tasks')
+        .filter(Boolean)
+    ])
+  );
 
-  const openAddModal = () => {
+  const openAddModal = (initialSection = '') => {
     setEditingTodo(null);
     setTodoTitle('');
     setTodoDescription('');
@@ -202,12 +215,14 @@ export const Dashboard = () => {
     setTodoPriority('None');
     setHasLocation(false);
     setTodoLocation('');
-    setTodoSection('');
+    setTodoSection(initialSection === 'Tasks' ? '' : initialSection);
+    setIsCreatingNewSection(initialSection !== '' && initialSection !== 'Tasks');
     setModalError('');
     setIsModalOpen(true);
   };
 
   const openProfileModal = () => {
+    setProfileEmail(user?.email || '');
     setProfileFullName(user?.full_name || '');
     setProfileCompanyName(user?.company_name || '');
     setProfileDesignation(user?.designation || '');
@@ -216,6 +231,50 @@ export const Dashboard = () => {
     setProfileError('');
     setProfileSuccess(false);
     setIsProfileModalOpen(true);
+    setIsEmailConfirmOpen(false);
+    setIsSimpleConfirmOpen(false);
+    setConfirmPasswordInput('');
+  };
+
+  const submitProfileUpdate = async (password = '') => {
+    setIsProfileSubmitting(true);
+    setProfileError('');
+    setProfileSuccess(false);
+
+    try {
+      const response = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: profileEmail.trim(),
+          password: password,
+          full_name: profileFullName.trim(),
+          company_name: profileCompanyName.trim(),
+          designation: profileDesignation.trim(),
+          department: profileDepartment.trim(),
+          date_of_birth: profileDateOfBirth
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      setProfileSuccess(true);
+      await checkMe(); // refresh user info globally
+      setTimeout(() => {
+        setIsProfileModalOpen(false);
+        setIsEmailConfirmOpen(false);
+        setIsSimpleConfirmOpen(false);
+      }, 1000);
+    } catch (err) {
+      setProfileError(err.message || 'An error occurred while saving profile');
+    } finally {
+      setIsProfileSubmitting(false);
+    }
   };
 
   const handleProfileSubmit = async (e) => {
@@ -258,39 +317,28 @@ export const Dashboard = () => {
       return;
     }
 
-    setIsProfileSubmitting(true);
-    setProfileError('');
-    setProfileSuccess(false);
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(profileEmail.trim())) {
+      setProfileError('Please enter a valid email address');
+      return;
+    }
 
-    try {
-      const response = await fetch('/api/auth/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          full_name: nameTrimmed,
-          company_name: profileCompanyName.trim(),
-          designation: profileDesignation.trim(),
-          department: profileDepartment.trim(),
-          date_of_birth: profileDateOfBirth
-        })
-      });
+    const hasEmailChanged = profileEmail.trim().toLowerCase() !== (user?.email || '').toLowerCase();
+    const hasOtherFieldsChanged =
+      nameTrimmed !== (user?.full_name || '') ||
+      profileCompanyName.trim() !== (user?.company_name || '') ||
+      profileDesignation.trim() !== (user?.designation || '') ||
+      profileDepartment.trim() !== (user?.department || '') ||
+      profileDateOfBirth !== (user?.date_of_birth || '');
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update profile');
-      }
-
-      setProfileSuccess(true);
-      await checkMe(); // refresh user info globally
-      setTimeout(() => {
-        setIsProfileModalOpen(false);
-      }, 1000);
-    } catch (err) {
-      setProfileError(err.message || 'An error occurred while saving profile');
-    } finally {
-      setIsProfileSubmitting(false);
+    if (hasEmailChanged) {
+      setConfirmPasswordInput('');
+      setIsEmailConfirmOpen(true);
+    } else if (hasOtherFieldsChanged) {
+      setIsSimpleConfirmOpen(true);
+    } else {
+      // Nothing changed, close modal
+      setIsProfileModalOpen(false);
     }
   };
 
@@ -311,6 +359,7 @@ export const Dashboard = () => {
     setHasLocation(!!todo.location);
     setTodoLocation(todo.location || '');
     setTodoSection(todo.section_name || '');
+    setIsCreatingNewSection(false);
     setModalError('');
     setIsModalOpen(true);
   };
@@ -400,7 +449,7 @@ export const Dashboard = () => {
               Task<span className="text-[#ff453a]">I</span>
             </h1>
             <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">
-              Secure Cloud
+              Task Manager Dashboard
             </p>
           </div>
         </div>
@@ -438,7 +487,7 @@ export const Dashboard = () => {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search reminders..."
+              placeholder="Search tasks..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full liquid-input py-2.5 pl-10 pr-4 text-xs focus:outline-none"
@@ -566,7 +615,7 @@ export const Dashboard = () => {
                 </span>
               </h2>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1">
-                {selectedView === 'trash' ? 'Items are auto-purged 30 days after deletion' : 'Reminders workspace'}
+                {selectedView === 'trash' ? 'Items are auto-purged 30 days after deletion' : 'Tasks workspace'}
               </p>
             </div>
 
@@ -594,43 +643,55 @@ export const Dashboard = () => {
                   className="liquid-btn-primary px-4 py-2 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  New Reminder
+                  New Task
                 </button>
               )}
             </div>
           </section>
 
-          {/* Reminders List (Grouped by Sections) */}
+          {/* Tasks List (Grouped by Sections) */}
           <section className="flex-1 overflow-y-auto space-y-6 pr-1">
             {isLoading ? (
               <div className="liquid-glass p-12 text-center text-slate-400">
                 <span className="inline-block animate-spin rounded-full h-7 w-7 border-t-2 border-b-2 border-white"></span>
-                <p className="mt-4 text-xs text-slate-500">Retrieving encrypted reminders...</p>
+                <p className="mt-4 text-xs text-slate-500">Retrieving encrypted tasks...</p>
               </div>
             ) : currentViewTodos.length === 0 ? (
               <div className="liquid-glass p-16 text-center text-slate-500">
                 <ListTodo className="w-12 h-12 mx-auto mb-3.5 text-slate-600" />
-                <h3 className="text-sm font-semibold text-slate-300">No Reminders</h3>
+                <h3 className="text-sm font-semibold text-slate-300">No Tasks</h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-                  {searchTerm ? 'No results matched your search keywords.' : 'All clear! Add a new reminder to begin.'}
+                  {searchTerm ? 'No results matched your search keywords.' : 'All clear! Add a new task to begin.'}
                 </p>
               </div>
             ) : (
               Object.keys(groupedTodos).map(section => (
                 <div key={section} className="space-y-3">
                   {/* Section Header */}
-                  <div 
-                    onClick={() => toggleSection(section)}
-                    className="flex items-center gap-2 px-1 py-1 cursor-pointer select-none group w-fit"
-                  >
-                    <ChevronRight 
-                      className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
-                        !collapsedSections[section] ? 'rotate-90' : ''
-                      }`} 
-                    />
-                    <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
-                    <h4 className="text-sm font-bold text-slate-300 tracking-wide group-hover:text-white transition-colors">{section}</h4>
-                    <span className="text-xs text-slate-500 font-bold">({groupedTodos[section].length})</span>
+                  <div className="flex items-center justify-between group/sec border-b border-white/5 pb-1 px-1">
+                    <button
+                      onClick={() => toggleSection(section)}
+                      className="flex items-center gap-2 py-1 cursor-pointer select-none group hover:opacity-80 transition-all text-left focus:outline-none"
+                    >
+                      <ChevronRight 
+                        className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
+                          !collapsedSections[section] ? 'rotate-90' : ''
+                        }`} 
+                      />
+                      <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                      <h4 className="text-sm font-bold text-slate-300 tracking-wide group-hover:text-white transition-colors">{section}</h4>
+                      <span className="text-xs text-slate-500 font-bold">({groupedTodos[section].length})</span>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openAddModal(section);
+                      }}
+                      className="opacity-0 group-hover/sec:opacity-100 p-1 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-all cursor-pointer"
+                      title={`Add task to ${section}`}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
                   </div>
 
                   {/* Todos inside section */}
@@ -751,8 +812,8 @@ export const Dashboard = () => {
                                         onClick={() => {
                                           setActiveDropdownId(null);
                                           triggerConfirmModal(
-                                            "Restore Reminder",
-                                            "Are you sure you want to restore this reminder to its active lists?",
+                                            "Restore Task",
+                                            "Are you sure you want to restore this task to its active lists?",
                                             "Restore",
                                             false,
                                             () => restoreTodo(todo.id)
@@ -768,7 +829,7 @@ export const Dashboard = () => {
                                           setActiveDropdownId(null);
                                           triggerConfirmModal(
                                             "Permanently Delete",
-                                            "Are you sure you want to permanently delete this reminder? This action cannot be undone.",
+                                            "Are you sure you want to permanently delete this task? This action cannot be undone.",
                                             "Delete Permanently",
                                             true,
                                             () => deleteTodo(todo.id, true)
@@ -796,8 +857,8 @@ export const Dashboard = () => {
                                         onClick={() => {
                                           setActiveDropdownId(null);
                                           triggerConfirmModal(
-                                            "Delete Reminder",
-                                            "Are you sure you want to move this reminder to the Trash?",
+                                            "Delete Task",
+                                            "Are you sure you want to move this task to the Trash?",
                                             "Delete",
                                             true,
                                             () => deleteTodo(todo.id, false)
@@ -825,7 +886,7 @@ export const Dashboard = () => {
         </main>
       </div>
 
-      {/* New Reminder dialog */}
+      {/* New Task dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-lg bg-[#1c1c1e] border border-white/10 rounded-2xl shadow-2xl p-6 relative overflow-y-auto max-h-[90vh]">
@@ -839,7 +900,7 @@ export const Dashboard = () => {
 
             <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
               <ListTodo className="w-4 h-4 text-blue-400" />
-              {editingTodo ? 'Edit Reminder Details' : 'New Reminder'}
+              {editingTodo ? 'Edit Task Details' : 'New Task'}
             </h3>
 
             {modalError && (
@@ -982,15 +1043,41 @@ export const Dashboard = () => {
                 </div>
 
                 {/* Section Input */}
-                <div className="flex justify-between items-center text-xs text-slate-400">
-                  <span>Section</span>
-                  <input
-                    type="text"
-                    value={todoSection}
-                    onChange={(e) => setTodoSection(e.target.value)}
-                    placeholder="New Section"
-                    className="w-40 liquid-input py-1.5 px-3 text-xs focus:outline-none"
-                  />
+                <div className="flex flex-col gap-2 text-xs text-slate-400">
+                  <div className="flex justify-between items-center">
+                    <span>Section</span>
+                    <select
+                      value={isCreatingNewSection ? 'new' : (todoSection || 'Tasks')}
+                      onChange={(e) => {
+                        if (e.target.value === 'new') {
+                          setIsCreatingNewSection(true);
+                          setTodoSection('');
+                        } else {
+                          setIsCreatingNewSection(false);
+                          setTodoSection(e.target.value === 'Tasks' ? '' : e.target.value);
+                        }
+                      }}
+                      className="bg-white/5 border border-white/5 text-white rounded-xl py-1.5 px-3 focus:outline-none text-xs w-40"
+                    >
+                      {existingSections.map(sec => (
+                        <option key={sec} value={sec} className="bg-[#1c1c1e]">{sec}</option>
+                      ))}
+                      <option value="new" className="bg-[#1c1c1e]">+ Create New Section...</option>
+                    </select>
+                  </div>
+                  {isCreatingNewSection && (
+                    <div className="flex justify-between items-center animate-fadeIn">
+                      <span className="text-slate-500 text-[10px]">New Section Name</span>
+                      <input
+                        type="text"
+                        required
+                        value={todoSection}
+                        onChange={(e) => setTodoSection(e.target.value)}
+                        placeholder="Enter section name"
+                        className="w-40 liquid-input py-1.5 px-3 text-xs focus:outline-none"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Tags input */}
@@ -1089,7 +1176,7 @@ export const Dashboard = () => {
                   type="submit"
                   className="liquid-btn-primary px-5 py-2 text-xs font-semibold cursor-pointer"
                 >
-                  {editingTodo ? 'Save Details' : 'Create Reminder'}
+                  {editingTodo ? 'Save Details' : 'Create Task'}
                 </button>
               </div>
             </form>
@@ -1170,16 +1257,19 @@ export const Dashboard = () => {
 
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               
-              {/* Account Email (Read-only) */}
+              {/* Account Email */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                  Account Email
+                <label htmlFor="profileEmail" className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                  Account Email <span className="text-[#ff453a]">*</span>
                 </label>
                 <input
-                  type="text"
-                  disabled
-                  value={user?.email || ''}
-                  className="w-full bg-white/[0.02] border border-white/5 text-slate-500 rounded-xl py-2.5 px-3.5 text-xs cursor-not-allowed focus:outline-none"
+                  id="profileEmail"
+                  type="email"
+                  required
+                  value={profileEmail}
+                  onChange={(e) => setProfileEmail(e.target.value)}
+                  placeholder="e.g. you@example.com"
+                  className="w-full liquid-input py-2.5 px-3.5 text-xs text-white focus:outline-none"
                 />
               </div>
 
@@ -1277,6 +1367,81 @@ export const Dashboard = () => {
                 </button>
               </div>
             </form>
+
+            {/* Email Password Confirmation Overlay */}
+            {isEmailConfirmOpen && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-fadeIn rounded-2xl">
+                <div className="w-full space-y-4">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-[#ff9f0a]" />
+                    Confirm Email Update
+                  </h3>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    You are updating your account email to <strong className="text-white">{profileEmail}</strong>. For security, please enter your password to confirm.
+                  </p>
+                  <div>
+                    <input
+                      type="password"
+                      required
+                      value={confirmPasswordInput}
+                      onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                      placeholder="Enter account password"
+                      className="w-full liquid-input py-2.5 px-3.5 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex gap-3 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEmailConfirmOpen(false)}
+                      className="liquid-btn-secondary px-4 py-2 text-[10px] font-semibold cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isProfileSubmitting || !confirmPasswordInput.trim()}
+                      onClick={() => submitProfileUpdate(confirmPasswordInput)}
+                      className="liquid-btn-primary px-5 py-2 text-[10px] font-semibold cursor-pointer disabled:opacity-50"
+                    >
+                      {isProfileSubmitting ? 'Confirming...' : 'Confirm & Update'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Simple Save Confirmation Overlay */}
+            {isSimpleConfirmOpen && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-fadeIn rounded-2xl">
+                <div className="w-full space-y-4">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Info className="w-4 h-4 text-blue-400" />
+                    Save Changes?
+                  </h3>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Are you sure you want to update your profile details?
+                  </p>
+                  <div className="flex gap-3 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsSimpleConfirmOpen(false)}
+                      className="liquid-btn-secondary px-4 py-2 text-[10px] font-semibold cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isProfileSubmitting}
+                      onClick={() => submitProfileUpdate('')}
+                      className="liquid-btn-primary px-5 py-2 text-[10px] font-semibold cursor-pointer"
+                    >
+                      {isProfileSubmitting ? 'Saving...' : 'Yes, Save'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

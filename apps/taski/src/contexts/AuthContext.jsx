@@ -41,7 +41,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    setIsLoading(true);
     setError(null);
     try {
       const response = await fetch('/api/auth/login', {
@@ -58,13 +57,10 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       setError(err.message);
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const register = async (email, fullName, password) => {
-    setIsLoading(true);
     setError(null);
     try {
       const response = await fetch('/api/auth/register', {
@@ -80,8 +76,6 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       setError(err.message);
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 

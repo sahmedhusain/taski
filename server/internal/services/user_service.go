@@ -157,6 +157,14 @@ func (s *userService) GetUserByID(ctx context.Context, id string) (*models.UserR
 }
 
 func (s *userService) UpdateProfile(ctx context.Context, userID string, req *models.UpdateProfileRequest) (*models.UserResponse, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrNotFound
+	}
+
 	fullName := strings.TrimSpace(req.FullName)
 	if fullName == "" {
 		return nil, fmt.Errorf("%w: full name is required", ErrInvalidInput)
@@ -183,12 +191,32 @@ func (s *userService) UpdateProfile(ctx context.Context, userID string, req *mod
 		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
 
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if user == nil {
-		return nil, ErrNotFound
+	// Email Update checks
+	newEmail := strings.ToLower(strings.TrimSpace(req.Email))
+	if newEmail != "" && newEmail != strings.ToLower(user.Email) {
+		// Verify email format
+		if err := validation.ValidateEmail(newEmail); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
+
+		// Verify password confirmation
+		if req.Password == "" {
+			return nil, fmt.Errorf("%w: password confirmation is required to change email", ErrInvalidInput)
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+			return nil, fmt.Errorf("%w: incorrect password confirmation", ErrInvalidInput)
+		}
+
+		// Verify email is not already taken by another user
+		existingUser, err := s.userRepo.GetByEmail(ctx, newEmail)
+		if err != nil {
+			return nil, err
+		}
+		if existingUser != nil && existingUser.ID != user.ID {
+			return nil, ErrEmailTaken
+		}
+
+		user.Email = newEmail
 	}
 
 	user.FullName = fullName

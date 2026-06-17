@@ -59,7 +59,7 @@ func (r *postgresUserRepository) GetByID(ctx context.Context, id string) (*model
 }
 
 func (r *postgresUserRepository) Update(ctx context.Context, user *models.User) error {
-	query := `UPDATE users SET full_name = $1, company_name = $2, designation = $3, department = $4, date_of_birth = $5 WHERE id = $6`
-	_, err := r.db.ExecContext(ctx, query, user.FullName, user.CompanyName, user.Designation, user.Department, user.DateOfBirth, user.ID)
+	query := `UPDATE users SET email = $1, full_name = $2, company_name = $3, designation = $4, department = $5, date_of_birth = $6 WHERE id = $7`
+	_, err := r.db.ExecContext(ctx, query, user.Email, user.FullName, user.CompanyName, user.Designation, user.Department, user.DateOfBirth, user.ID)
 	return err
 }

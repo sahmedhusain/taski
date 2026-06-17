@@ -62,7 +62,7 @@ func main() {
 	userService := services.NewUserService(userRepo)
 	todoService := services.NewTodoService(todoRepo)
 
-	// Background worker to purge soft-deleted reminders older than 30 days every 24 hours
+	// Background worker to purge soft-deleted tasks older than 30 days every 24 hours
 	go func() {
 		log.Println("Starting background trash cleaner worker (interval: 24h)...")
 		ticker := time.NewTicker(24 * time.Hour)

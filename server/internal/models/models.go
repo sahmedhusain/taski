@@ -60,6 +60,8 @@ type UserResponse struct {
 }
 
 type UpdateProfileRequest struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
 	FullName    string `json:"full_name"`
 	CompanyName string `json:"company_name"`
 	Designation string `json:"designation"`
