@@ -143,6 +143,36 @@ apply_migrations() {
     fi
 }
 
+# Helper function to detect and resolve port conflicts on the host
+check_port_clash() {
+    local port=$1
+    local name=$2
+    if command -v lsof >/dev/null 2>&1; then
+        if lsof -iTCP:$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+            for pid in $(lsof -iTCP:$port -sTCP:LISTEN -t); do
+                local cmd=$(ps -p "$pid" -o comm= 2>/dev/null || true)
+                # Ignore Docker itself to avoid false positives when docker compose is already running
+                if [[ "$cmd" =~ [Dd]ocker || "$cmd" =~ "vpnkit" ]]; then
+                    continue
+                fi
+                echo "--------------------------------------------------------"
+                echo "WARNING: Port $port ($name) is in use by a host process:"
+                echo "         Process: $cmd (PID: $pid)"
+                echo "--------------------------------------------------------"
+                read -p "Do you want to stop/kill this process to free port $port? [y/N]: " kill_choice
+                if [[ "$kill_choice" =~ ^[Yy]$ ]]; then
+                    echo "Killing process $pid..."
+                    kill -9 "$pid" || true
+                    sleep 1
+                else
+                    echo "Error: Port $port is required by $name. Please free it manually and try again."
+                    exit 1
+                fi
+            done
+        fi
+    fi
+}
+
 # Prerequisite checker for Normal Mode
 check_normal_prerequisites() {
     echo "Checking local prerequisites for Normal Mode..."
@@ -207,6 +237,15 @@ if [ "$mode_choice" -eq 1 ]; then
         echo "4) frontend"
         read -p "Services: " selected_numbers
         
+        # Check for port clashes on selected host ports
+        for num in $selected_numbers; do
+            case "$num" in
+                1) check_port_clash 5435 "PostgreSQL Database" ;;
+                2) check_port_clash 8085 "pgAdmin Dashboard" ;;
+                4) check_port_clash 3000 "Nginx Frontend" ;;
+            esac
+        done
+
         SERVICES=""
         for num in $selected_numbers; do
             case "$num" in
@@ -225,6 +264,9 @@ if [ "$mode_choice" -eq 1 ]; then
         echo "Booting Docker containers: $SERVICES..."
         docker compose up --build -d $SERVICES
     else
+        check_port_clash 5435 "PostgreSQL Database"
+        check_port_clash 8085 "pgAdmin Dashboard"
+        check_port_clash 3000 "Nginx Frontend"
         echo "Booting all Docker containers..."
         docker compose up --build -d
     fi
@@ -267,6 +309,20 @@ else
             4) start_docker_pgadmin=1 ;;
         esac
     done
+
+    # Check for port clashes on selected host components
+    if [ "$start_local_backend" -eq 1 ]; then
+        check_port_clash "${PORT:-8080}" "Go Backend"
+    fi
+    if [ "$start_local_frontend" -eq 1 ]; then
+        check_port_clash 3000 "Vite Frontend"
+    fi
+    if [ "$start_docker_db" -eq 1 ]; then
+        check_port_clash 5435 "PostgreSQL Database"
+    fi
+    if [ "$start_docker_pgadmin" -eq 1 ]; then
+        check_port_clash 8085 "pgAdmin Dashboard"
+    fi
 
     # Verify Docker is running if Docker-based components were chosen
     if [ "$start_docker_db" -eq 1 ] || [ "$start_docker_pgadmin" -eq 1 ]; then
