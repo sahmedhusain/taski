@@ -282,18 +282,16 @@ export const Dashboard = () => {
     if (isProfileSubmitting) return;
 
     const nameTrimmed = profileFullName.trim();
-    if (!nameTrimmed) {
-      setProfileError('Full Name is required');
-      return;
-    }
-    const nameRegex = /^[a-zA-Z\s'\-.]+$/;
-    if (!nameRegex.test(nameTrimmed)) {
-      setProfileError('Full name can only contain letters, spaces, hyphens, periods, and apostrophes');
-      return;
-    }
-    if (nameTrimmed.length < 2 || nameTrimmed.length > 100) {
-      setProfileError('Full name must be between 2 and 100 characters');
-      return;
+    if (nameTrimmed) {
+      const nameRegex = /^[a-zA-Z\s'\-.]+$/;
+      if (!nameRegex.test(nameTrimmed)) {
+        setProfileError('Full name can only contain letters, spaces, hyphens, periods, and apostrophes');
+        return;
+      }
+      if (nameTrimmed.length < 2 || nameTrimmed.length > 100) {
+        setProfileError('Full name must be between 2 and 100 characters');
+        return;
+      }
     }
 
     if (profileDateOfBirth) {
@@ -328,17 +326,39 @@ export const Dashboard = () => {
       }
     }
 
-    if (profileCompanyName.length > 100) {
-      setProfileError('Company Name must not exceed 100 characters');
-      return;
+    const fieldRegex = /^[a-zA-Z0-9\s'\-.,&()]*$/;
+
+    if (profileCompanyName.trim()) {
+      if (profileCompanyName.length > 100) {
+        setProfileError('Company Name must not exceed 100 characters');
+        return;
+      }
+      if (!fieldRegex.test(profileCompanyName)) {
+        setProfileError('Company Name contains invalid characters');
+        return;
+      }
     }
-    if (profileDesignation.length > 100) {
-      setProfileError('Designation must not exceed 100 characters');
-      return;
+
+    if (profileDesignation.trim()) {
+      if (profileDesignation.length > 100) {
+        setProfileError('Designation must not exceed 100 characters');
+        return;
+      }
+      if (!fieldRegex.test(profileDesignation)) {
+        setProfileError('Designation contains invalid characters');
+        return;
+      }
     }
-    if (profileDepartment.length > 100) {
-      setProfileError('Department must not exceed 100 characters');
-      return;
+
+    if (profileDepartment.trim()) {
+      if (profileDepartment.length > 100) {
+        setProfileError('Department must not exceed 100 characters');
+        return;
+      }
+      if (!fieldRegex.test(profileDepartment)) {
+        setProfileError('Department contains invalid characters');
+        return;
+      }
     }
 
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;

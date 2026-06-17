@@ -166,9 +166,6 @@ func (s *userService) UpdateProfile(ctx context.Context, userID string, req *mod
 	}
 
 	fullName := strings.TrimSpace(req.FullName)
-	if fullName == "" {
-		return nil, fmt.Errorf("%w: full name is required", ErrInvalidInput)
-	}
 	if err := validation.ValidateFullName(fullName); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
