@@ -190,16 +190,16 @@ export const Dashboard = () => {
   };
 
   const groupedTodos = getGroupedTodos();
-  const existingSections = Array.from(
-    new Set([
-      'Tasks',
-      ...todos
-        .map(t => (t.section_name && t.section_name.trim()) || 'Tasks')
+  const userSections = Array.from(
+    new Set(
+      todos
+        .map(t => t.section_name && t.section_name.trim())
         .filter(Boolean)
-    ])
+    )
   );
 
   const openAddModal = (initialSection = '') => {
+    const sectionName = typeof initialSection === 'string' ? initialSection : '';
     setEditingTodo(null);
     setTodoTitle('');
     setTodoDescription('');
@@ -215,8 +215,8 @@ export const Dashboard = () => {
     setTodoPriority('None');
     setHasLocation(false);
     setTodoLocation('');
-    setTodoSection(initialSection === 'Tasks' ? '' : initialSection);
-    setIsCreatingNewSection(initialSection !== '' && initialSection !== 'Tasks');
+    setTodoSection(sectionName);
+    setIsCreatingNewSection(sectionName !== '' && !userSections.includes(sectionName));
     setModalError('');
     setIsModalOpen(true);
   };
@@ -1044,38 +1044,111 @@ export const Dashboard = () => {
 
                 {/* Section Input */}
                 <div className="flex flex-col gap-2 text-xs text-slate-400">
-                  <div className="flex justify-between items-center">
-                    <span>Section</span>
-                    <select
-                      value={isCreatingNewSection ? 'new' : (todoSection || 'Tasks')}
-                      onChange={(e) => {
-                        if (e.target.value === 'new') {
-                          setIsCreatingNewSection(true);
-                          setTodoSection('');
-                        } else {
-                          setIsCreatingNewSection(false);
-                          setTodoSection(e.target.value === 'Tasks' ? '' : e.target.value);
-                        }
-                      }}
-                      className="bg-white/5 border border-white/5 text-white rounded-xl py-1.5 px-3 focus:outline-none text-xs w-40"
-                    >
-                      {existingSections.map(sec => (
-                        <option key={sec} value={sec} className="bg-[#1c1c1e]">{sec}</option>
-                      ))}
-                      <option value="new" className="bg-[#1c1c1e]">+ Create New Section...</option>
-                    </select>
-                  </div>
-                  {isCreatingNewSection && (
-                    <div className="flex justify-between items-center animate-fadeIn">
-                      <span className="text-slate-500 text-[10px]">New Section Name</span>
-                      <input
-                        type="text"
-                        required
-                        value={todoSection}
-                        onChange={(e) => setTodoSection(e.target.value)}
-                        placeholder="Enter section name"
-                        className="w-40 liquid-input py-1.5 px-3 text-xs focus:outline-none"
-                      />
+                  {userSections.length === 0 ? (
+                    !isCreatingNewSection ? (
+                      <div className="flex justify-between items-center">
+                        <span>Section</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCreatingNewSection(true);
+                            setTodoSection('');
+                          }}
+                          className="bg-white/5 hover:bg-white/10 text-white rounded-xl py-1.5 px-3.5 text-xs transition-colors cursor-pointer"
+                        >
+                          + Add Section
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center animate-fadeIn">
+                        <span>Section</span>
+                        <div className="flex items-center gap-1.5 w-40">
+                          <input
+                            type="text"
+                            value={todoSection}
+                            onChange={(e) => setTodoSection(e.target.value)}
+                            placeholder="Section Name"
+                            className="flex-1 bg-white/5 border border-white/5 text-white rounded-xl py-1.5 px-3 focus:outline-none text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCreatingNewSection(false);
+                              setTodoSection('');
+                            }}
+                            className="text-slate-500 hover:text-white p-1 cursor-pointer"
+                            title="Cancel section"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span>Section</span>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={isCreatingNewSection ? 'new' : (todoSection || '')}
+                            onChange={(e) => {
+                              if (e.target.value === 'new') {
+                                setIsCreatingNewSection(true);
+                                setTodoSection('');
+                              } else {
+                                setIsCreatingNewSection(false);
+                                setTodoSection(e.target.value);
+                              }
+                            }}
+                            className="bg-white/5 border border-white/5 text-white rounded-xl py-1.5 px-3 focus:outline-none text-xs w-28"
+                          >
+                            <option value="" className="bg-[#1c1c1e]">No Section</option>
+                            {userSections.map(sec => (
+                              <option key={sec} value={sec} className="bg-[#1c1c1e]">{sec}</option>
+                            ))}
+                            <option value="new" className="bg-[#1c1c1e]">+ New...</option>
+                          </select>
+                          
+                          {!isCreatingNewSection && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCreatingNewSection(true);
+                                setTodoSection('');
+                              }}
+                              className="bg-white/5 hover:bg-white/10 text-white rounded-xl py-1.5 px-2.5 text-[10px] transition-colors cursor-pointer font-semibold"
+                              title="Create new section"
+                            >
+                              + New
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {isCreatingNewSection && (
+                        <div className="flex justify-between items-center animate-fadeIn">
+                          <span>Section</span>
+                          <div className="flex items-center gap-1.5 w-40">
+                            <input
+                              type="text"
+                              value={todoSection}
+                              onChange={(e) => setTodoSection(e.target.value)}
+                              placeholder="Section Name"
+                              className="flex-1 bg-white/5 border border-white/5 text-white rounded-xl py-1.5 px-3 focus:outline-none text-xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCreatingNewSection(false);
+                                setTodoSection('');
+                              }}
+                              className="text-slate-500 hover:text-white p-1 cursor-pointer"
+                              title="Cancel new section"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
