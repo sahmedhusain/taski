@@ -1,6 +1,9 @@
 # IDE specific files
 .idea/
 .vscode/
+dist/
+build/
+node_modules/
 *.swp
 *.swo
 .DS_Store
