@@ -101,7 +101,7 @@ export const RegisterPage = () => {
                     type="email"
                     id="email"
                     required
-                    autocomplete="username"
+                    autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
@@ -124,7 +124,7 @@ export const RegisterPage = () => {
                     id="password"
                     required
                     pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}"
-                    autocomplete="new-password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Min 8 characters"

@@ -69,7 +69,7 @@ export const LoginPage = () => {
                 type="email"
                 id="email"
                 required
-                autocomplete="username"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
@@ -91,7 +91,7 @@ export const LoginPage = () => {
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 required
-                autocomplete="current-password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

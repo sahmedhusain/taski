@@ -7,48 +7,12 @@ import (
 	"todo-server/internal/models"
 )
 
-type postgresUserRepository struct {
-	db *sql.DB
-}
-
-func NewUserRepository(db *sql.DB) UserRepository {
-	return &postgresUserRepository{db: db}
-}
-
-func (r *postgresUserRepository) Create(ctx context.Context, user *models.User) error {
-	query := `INSERT INTO users (id, email, password_hash, created_at) VALUES ($1, $2, $3, $4)`
-	_, err := r.db.ExecContext(ctx, query, user.ID, user.Email, user.PasswordHash, user.CreatedAt)
-	return err
-}
-
-func (r *postgresUserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
-	query := `SELECT id, email, password_hash, created_at FROM users WHERE LOWER(email) = LOWER($1)`
-	row := r.db.QueryRowContext(ctx, query, email)
-
-	var user models.User
-	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &user, nil
-}
-
-func (r *postgresUserRepository) GetByID(ctx context.Context, id string) (*models.User, error) {
-	query := `SELECT id, email, password_hash, created_at FROM users WHERE id = $1`
-	row := r.db.QueryRowContext(ctx, query, id)
-
-	var user models.User
-	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &user, nil
+type TodoRepository interface {
+	Create(ctx context.Context, todo *models.Todo) error
+	GetByID(ctx context.Context, id string) (*models.Todo, error)
+	GetByUserID(ctx context.Context, userID string) ([]*models.Todo, error)
+	Update(ctx context.Context, todo *models.Todo) error
+	Delete(ctx context.Context, id string) error
 }
 
 type postgresTodoRepository struct {
