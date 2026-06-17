@@ -43,15 +43,15 @@ From the project root directory, run:
 
 1.  **Run General Security Tests** (CORS origin checks, UUID validation, and rate limiter status):
     ```bash
-    node tests/test_security.js
+    node apps/taski/tests/test_security.cjs
     ```
 2.  **Run Profile Validation Tests** (DOB, age constraints, name format, and length checks):
     ```bash
-    node tests/test_profile_validations.js
+    node apps/taski/tests/test_profile_validations.cjs
     ```
 3.  **Run Email Conflict Check** (Verifying 409 status code on email updates):
     ```bash
-    node tests/test_email_conflict.js
+    node apps/taski/tests/test_email_conflict.cjs
     ```
 
 ---
