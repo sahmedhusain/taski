@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +13,7 @@ import (
 
 	"todo-server/internal/config"
 	"todo-server/internal/handlers"
+	"todo-server/internal/middleware"
 	"todo-server/internal/repository"
 	"todo-server/internal/routes"
 	"todo-server/internal/services"
@@ -21,16 +22,26 @@ import (
 )
 
 func main() {
-	log.Println("Booting TaskI Go Core Engine...")
-
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
 	}
+
+	// Initialize structured logger (JSON in production, Text in dev)
+	var logger *slog.Logger
+	if cfg.Environment == "production" {
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	} else {
+		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	}
+	slog.SetDefault(logger)
+
+	slog.Info("Booting TaskI Go Core Engine...")
 
 	// Security Check (SEC-07): Warn if running in production with default secrets
 	if cfg.Environment == "production" && string(cfg.JWTSecret) == "super_secure_jwt_secret_change_me_in_production" {
-		log.Println("[SECURITY WARNING] JWT_SECRET is set to the default fallback value in a production environment! This is a major security risk. Please configure a unique, high-entropy key.")
+		slog.Warn("[SECURITY WARNING] JWT_SECRET is set to the default fallback value in a production environment! This is a major security risk. Please configure a unique, high-entropy key.")
 	}
 
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
@@ -48,18 +59,18 @@ func main() {
 			err = db.PingContext(ctx)
 			cancel()
 			if err == nil {
-				log.Println("Successfully connected to PostgreSQL database connection pool.")
+				slog.Info("Successfully connected to PostgreSQL database connection pool.")
 				break
 			}
 		}
-		log.Printf("Database connection attempt %d failed, retrying in 2 seconds...", i)
+		slog.Warn("Database connection attempt failed, retrying in 2 seconds...", "attempt", i, "error", err)
 		time.Sleep(2 * time.Second)
 	}
 
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		slog.Error("Failed to connect to database after 5 attempts", "error", err)
+		os.Exit(1)
 	}
-	defer db.Close()
 
 	userRepo := repository.NewUserRepository(db)
 	todoRepo := repository.NewTodoRepository(db)
@@ -67,25 +78,29 @@ func main() {
 	userService := services.NewUserService(userRepo)
 	todoService := services.NewTodoService(todoRepo)
 
+	// Start JWT revocation map background clean up worker
+	slog.Info("Starting background JWT blacklist cleanup worker...")
+	middleware.Blacklist.StartCleanupWorker()
+
 	// Background worker to purge soft-deleted tasks older than 30 days every 24 hours
 	go func() {
-		log.Println("Starting background trash cleaner worker (interval: 24h)...")
+		slog.Info("Starting background trash cleaner worker (interval: 24h)...")
 		ticker := time.NewTicker(24 * time.Hour)
 		defer ticker.Stop()
 
 		// Run immediately on boot
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		if err := todoService.CleanupDeleted(ctx); err != nil {
-			log.Printf("Background trash cleaner warning: %v", err)
+			slog.Warn("Background trash cleaner warning on initial boot cleanup", "error", err)
 		} else {
-			log.Println("Background trash cleaner: initial cleanup completed successfully.")
+			slog.Info("Background trash cleaner: initial cleanup completed successfully.")
 		}
 		cancel()
 
 		for range ticker.C {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			if err := todoService.CleanupDeleted(ctx); err != nil {
-				log.Printf("Background trash cleaner error: %v", err)
+				slog.Error("Background trash cleaner error during scheduled run", "error", err)
 			}
 			cancel()
 		}
@@ -104,23 +119,33 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("HTTP Server is listening on port %s", cfg.Port)
+		slog.Info("HTTP Server is listening", "address", serverAddr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server failed: %v", err)
+			slog.Error("HTTP server failed", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down HTTP Server gracefully...")
+	slog.Info("Shutting down HTTP Server gracefully...")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		slog.Error("Server forced to shutdown", "error", err)
+		_ = db.Close()
+		os.Exit(1)
 	}
 
-	log.Println("TaskI Go Core Engine shut down cleanly.")
+	slog.Info("Gracefully closing PostgreSQL connection pool...")
+	if err := db.Close(); err != nil {
+		slog.Error("Error closing database connection pool", "error", err)
+	} else {
+		slog.Info("PostgreSQL connection pool closed successfully.")
+	}
+
+	slog.Info("TaskI Go Core Engine shut down cleanly.")
 }

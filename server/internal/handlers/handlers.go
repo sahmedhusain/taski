@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"todo-server/internal/config"
 	"todo-server/internal/middleware"
@@ -51,6 +52,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.Info("Audit Log: New user registered", "email", req.Email, "userID", res.ID)
 	h.respondWithJSON(w, http.StatusCreated, res)
 }
 
@@ -87,6 +89,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
+	slog.Info("Audit Log: User logged in", "userID", userRes.ID, "email", userRes.Email)
 	h.respondWithJSON(w, http.StatusOK, userRes)
 }
 
@@ -94,6 +97,11 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		h.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
+	}
+
+	// Extract the token and blacklist it to support stateful JWT revocation
+	if cookie, err := r.Cookie("token"); err == nil && cookie.Value != "" {
+		middleware.BlacklistToken(cookie.Value, h.cfg.JWTSecret)
 	}
 
 	// Clear JWT HttpOnly cookie
@@ -107,6 +115,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
+	slog.Info("Audit Log: User logged out")
 	h.respondWithJSON(w, http.StatusOK, map[string]string{"message": "successfully logged out"})
 }
 
@@ -171,9 +180,9 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.Info("Audit Log: User profile updated", "userID", userID, "updatedFields", req)
 	h.respondWithJSON(w, http.StatusOK, res)
 }
-
 
 // Todo Handlers
 func (h *Handler) GetTodos(w http.ResponseWriter, r *http.Request) {
@@ -222,6 +231,7 @@ func (h *Handler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.Info("Audit Log: Todo created", "userID", userID, "todoID", todo.ID, "title", todo.Title)
 	h.respondWithJSON(w, http.StatusCreated, todo)
 }
 
@@ -296,6 +306,7 @@ func (h *Handler) UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.Info("Audit Log: Todo updated", "userID", userID, "todoID", todoID, "updates", req)
 	h.respondWithJSON(w, http.StatusOK, todo)
 }
 
@@ -313,7 +324,8 @@ func (h *Handler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var err error
-	if r.URL.Query().Get("permanent") == "true" {
+	isPermanent := r.URL.Query().Get("permanent") == "true"
+	if isPermanent {
 		err = h.todoService.HardDelete(r.Context(), userID, todoID)
 	} else {
 		err = h.todoService.Delete(r.Context(), userID, todoID)
@@ -336,6 +348,7 @@ func (h *Handler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.Info("Audit Log: Todo deleted", "userID", userID, "todoID", todoID, "permanent", isPermanent)
 	h.respondWithJSON(w, http.StatusOK, map[string]string{"message": "todo successfully deleted"})
 }
 

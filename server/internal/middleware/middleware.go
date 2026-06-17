@@ -3,7 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
@@ -20,6 +20,69 @@ type contextKey string
 
 const UserIDKey contextKey = "user_id"
 
+// TokenBlacklist manages revoked JWT tokens in-memory (thread-safe)
+type TokenBlacklist struct {
+	mu     sync.RWMutex
+	tokens map[string]time.Time
+}
+
+var Blacklist = &TokenBlacklist{
+	tokens: make(map[string]time.Time),
+}
+
+func (tb *TokenBlacklist) Add(tokenString string, expiresAt time.Time) {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	tb.tokens[tokenString] = expiresAt
+}
+
+func (tb *TokenBlacklist) IsBlacklisted(tokenString string) bool {
+	tb.mu.RLock()
+	defer tb.mu.RUnlock()
+	expiresAt, exists := tb.tokens[tokenString]
+	if !exists {
+		return false
+	}
+	if time.Now().After(expiresAt) {
+		return false
+	}
+	return true
+}
+
+func (tb *TokenBlacklist) StartCleanupWorker() {
+	go func() {
+		for {
+			time.Sleep(5 * time.Minute)
+			tb.mu.Lock()
+			now := time.Now()
+			for token, expiresAt := range tb.tokens {
+				if now.After(expiresAt) {
+					delete(tb.tokens, token)
+				}
+			}
+			tb.mu.Unlock()
+		}
+	}()
+}
+
+// BlacklistToken extracts the expiration claim and blacklists the token
+func BlacklistToken(tokenString string, jwtSecret []byte) {
+	token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+
+	expiresAt := time.Now().Add(24 * time.Hour) // Fallback max-age
+	if token != nil {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if exp, ok := claims["exp"].(float64); ok {
+				expiresAt = time.Unix(int64(exp), 0)
+			}
+		}
+	}
+	Blacklist.Add(tokenString, expiresAt)
+	slog.Info("JWT token explicitly revoked and blacklisted", "expiresAt", expiresAt)
+}
+
 // AuthMiddleware extracts the token from HttpOnly cookie and validates it
 func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -33,6 +96,15 @@ func AuthMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 			}
 
 			tokenString := cookie.Value
+
+			// Security Check: Verify token signature has not been revoked (blacklisted)
+			if Blacklist.IsBlacklisted(tokenString) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error":"token has been revoked (logged out)"}`))
+				return
+			}
+
 			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -90,7 +162,7 @@ func CORSMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-CSRF-Token")
 
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
@@ -112,7 +184,7 @@ func CORSMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 	}
 }
 
-// RateLimiter manages rate limits per IP
+// RateLimiter manages rate limits per IP with a 5-minute lockout block on breach
 type clientLimiter struct {
 	limiter      *rate.Limiter
 	lastSeen     time.Time
@@ -159,6 +231,7 @@ func (rl *RateLimiter) allowClient(ip string) bool {
 	// If rate limit is exceeded, set a 5-minute block and deny
 	if !c.limiter.Allow() {
 		c.blockedUntil = time.Now().Add(5 * time.Minute)
+		slog.Warn("Rate limit exceeded; client IP temporarily blacklisted for 5 minutes", "ip", ip)
 		return false
 	}
 
@@ -222,7 +295,7 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Printf("[PANIC RECOVERED] %v", err)
+				slog.Error("panic recovered in HTTP handler pipeline", "error", err)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte(`{"error":"internal server error occurred"}`))
