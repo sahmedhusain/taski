@@ -39,7 +39,7 @@ services:
 
   frontend:
     build:
-      context: ./apps/to-do-app
+      context: ./apps/taski
       dockerfile: Dockerfile
     restart: always
     ports:
