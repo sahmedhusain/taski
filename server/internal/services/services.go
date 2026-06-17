@@ -8,6 +8,7 @@ import (
 
 	"todo-server/internal/models"
 	"todo-server/internal/repository"
+	"todo-server/internal/validation"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -38,8 +39,13 @@ func NewUserService(userRepo repository.UserRepository) UserService {
 
 func (s *userService) Register(ctx context.Context, req *models.RegisterRequest) (*models.UserResponse, error) {
 	email := strings.ToLower(strings.TrimSpace(req.Email))
-	if email == "" || len(req.Password) < 8 {
-		return nil, ErrInvalidInput
+	
+	if err := validation.ValidateEmail(email); err != nil {
+		return nil, err
+	}
+	
+	if err := validation.ValidatePassword(req.Password); err != nil {
+		return nil, err
 	}
 
 	existingUser, err := s.userRepo.GetByEmail(ctx, email)

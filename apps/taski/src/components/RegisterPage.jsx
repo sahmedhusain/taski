@@ -19,8 +19,15 @@ export const RegisterPage = () => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    if (password.length < 8) {
-      setErrorMessage('Password must be at least 8 characters long');
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setErrorMessage('Please enter a valid email address');
+      return;
+    }
+
+    const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      setErrorMessage('Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one digit, and one special character');
       return;
     }
 
@@ -116,7 +123,7 @@ export const RegisterPage = () => {
                     type={showPassword ? 'text' : 'password'}
                     id="password"
                     required
-                    minlength="8"
+                    pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}"
                     autocomplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -132,7 +139,7 @@ export const RegisterPage = () => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                   <div className="error-message text-red-400 text-xs mt-1">
-                    Password must be at least 8 characters.
+                    Password must contain at least 8 characters, one uppercase, one lowercase, one digit, and one special character.
                   </div>
                 </div>
               </div>
