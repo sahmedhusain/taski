@@ -4,11 +4,12 @@ import { useTodos } from '../contexts/TodoContext';
 import { 
   LogOut, Plus, Search, Check, Trash2, Edit2, 
   ListTodo, Clock, CheckSquare, Layers, X, Calendar, User,
-  Flag, AlertTriangle, MapPin, Link, Undo2, ChevronRight, Info
+  Flag, AlertTriangle, MapPin, Link, Undo2, ChevronRight, Info,
+  ChevronDown, MoreVertical
 } from 'lucide-react';
 
 export const Dashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, checkMe } = useAuth();
   const { todos, deletedTodos, addTodo, updateTodo, deleteTodo, restoreTodo, isLoading } = useTodos();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,6 +28,43 @@ export const Dashboard = () => {
   const [newListName, setNewListName] = useState('');
   const [showAddListInput, setShowAddListInput] = useState(false);
   const [showCompleted, setShowCompleted] = useState(true);
+
+  // Collapsible list sections state
+  const [collapsedSections, setCollapsedSections] = useState({});
+  const toggleSection = (sectionName) => {
+    setCollapsedSections(prev => ({ ...prev, [sectionName]: !prev[sectionName] }));
+  };
+
+  // Dropdown menu state
+  const [activeDropdownId, setActiveDropdownId] = useState(null);
+
+  // Confirmation Alert Modal states
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmBtnText, setConfirmBtnText] = useState('');
+  const [confirmIsDangerous, setConfirmIsDangerous] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+
+  const triggerConfirmModal = (title, message, btnText, isDangerous, onConfirm) => {
+    setConfirmTitle(title);
+    setConfirmMessage(message);
+    setConfirmBtnText(btnText);
+    setConfirmIsDangerous(isDangerous);
+    setConfirmAction(() => onConfirm);
+    setConfirmModalOpen(true);
+  };
+
+  // User Profile Modal states
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileFullName, setProfileFullName] = useState('');
+  const [profileCompanyName, setProfileCompanyName] = useState('');
+  const [profileDesignation, setProfileDesignation] = useState('');
+  const [profileDepartment, setProfileDepartment] = useState('');
+  const [profileDateOfBirth, setProfileDateOfBirth] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -169,6 +207,93 @@ export const Dashboard = () => {
     setIsModalOpen(true);
   };
 
+  const openProfileModal = () => {
+    setProfileFullName(user?.full_name || '');
+    setProfileCompanyName(user?.company_name || '');
+    setProfileDesignation(user?.designation || '');
+    setProfileDepartment(user?.department || '');
+    setProfileDateOfBirth(user?.date_of_birth || '');
+    setProfileError('');
+    setProfileSuccess(false);
+    setIsProfileModalOpen(true);
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    if (isProfileSubmitting) return;
+
+    const nameTrimmed = profileFullName.trim();
+    if (!nameTrimmed) {
+      setProfileError('Full Name is required');
+      return;
+    }
+    const nameRegex = /^[a-zA-Z\s'\-.]+$/;
+    if (!nameRegex.test(nameTrimmed)) {
+      setProfileError('Full name can only contain letters, spaces, hyphens, periods, and apostrophes');
+      return;
+    }
+    if (nameTrimmed.length < 2 || nameTrimmed.length > 100) {
+      setProfileError('Full name must be between 2 and 100 characters');
+      return;
+    }
+
+    if (profileDateOfBirth) {
+      const dobRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dobRegex.test(profileDateOfBirth)) {
+        setProfileError('Date of Birth must be in YYYY-MM-DD format');
+        return;
+      }
+    }
+
+    if (profileCompanyName.length > 100) {
+      setProfileError('Company Name must not exceed 100 characters');
+      return;
+    }
+    if (profileDesignation.length > 100) {
+      setProfileError('Designation must not exceed 100 characters');
+      return;
+    }
+    if (profileDepartment.length > 100) {
+      setProfileError('Department must not exceed 100 characters');
+      return;
+    }
+
+    setIsProfileSubmitting(true);
+    setProfileError('');
+    setProfileSuccess(false);
+
+    try {
+      const response = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          full_name: nameTrimmed,
+          company_name: profileCompanyName.trim(),
+          designation: profileDesignation.trim(),
+          department: profileDepartment.trim(),
+          date_of_birth: profileDateOfBirth
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      setProfileSuccess(true);
+      await checkMe(); // refresh user info globally
+      setTimeout(() => {
+        setIsProfileModalOpen(false);
+      }, 1000);
+    } catch (err) {
+      setProfileError(err.message || 'An error occurred while saving profile');
+    } finally {
+      setIsProfileSubmitting(false);
+    }
+  };
+
   const openEditModal = (todo) => {
     setEditingTodo(todo);
     setTodoTitle(todo.title);
@@ -265,7 +390,7 @@ export const Dashboard = () => {
       <div className="glow-blur-indigo bottom-[-10%] left-[-10%]"></div>
 
       {/* Header — floating glass pill, detached from the viewport edges */}
-      <header className="sticky top-4 sm:top-6 z-40 mx-4 sm:mx-6 liquid-nav px-5 py-3 flex items-center justify-between">
+      <header className="sticky top-4 sm:top-6 z-40 mx-4 sm:mx-6 mb-5 sm:mb-7 liquid-nav px-5 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="liquid-orb w-10 h-10 rounded-2xl bg-gradient-to-br from-white/15 to-white/[0.02] border border-white/10 flex items-center justify-center">
             <ListTodo className="w-5 h-5 text-white" />
@@ -281,11 +406,16 @@ export const Dashboard = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/[0.04] border border-white/10 text-slate-400 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <button
+            onClick={openProfileModal}
+            className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/[0.04] border border-white/10 text-slate-400 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer"
+            title="Edit profile info"
+          >
             <User className="w-3.5 h-3.5 text-slate-400" />
-            {user?.full_name && <span className="font-semibold text-slate-200">{user.full_name} •</span>}
-            <span>{user?.email}</span>
-          </div>
+            <span className="font-semibold text-slate-200">
+              {user?.full_name && user.full_name.trim() ? user.full_name : user?.email}
+            </span>
+          </button>
           <button
             onClick={logout}
             className="liquid-btn-secondary px-4 py-2 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
@@ -489,143 +619,205 @@ export const Dashboard = () => {
               Object.keys(groupedTodos).map(section => (
                 <div key={section} className="space-y-3">
                   {/* Section Header */}
-                  <div className="flex items-center gap-2.5 px-1 py-1">
+                  <div 
+                    onClick={() => toggleSection(section)}
+                    className="flex items-center gap-2 px-1 py-1 cursor-pointer select-none group w-fit"
+                  >
+                    <ChevronRight 
+                      className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 ${
+                        !collapsedSections[section] ? 'rotate-90' : ''
+                      }`} 
+                    />
                     <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{section}</h4>
-                    <span className="text-[10px] text-slate-600 font-bold">({groupedTodos[section].length})</span>
+                    <h4 className="text-sm font-bold text-slate-300 tracking-wide group-hover:text-white transition-colors">{section}</h4>
+                    <span className="text-xs text-slate-500 font-bold">({groupedTodos[section].length})</span>
                   </div>
 
                   {/* Todos inside section */}
-                  <div className="space-y-2.5">
-                    {groupedTodos[section].map((todo) => (
-                      <div 
-                        key={todo.id}
-                        className={`liquid-glass liquid-interactive p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
-                          todo.is_completed ? 'opacity-50 border-emerald-950/10' : ''
-                        }`}
-                      >
-                        <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                          {/* Circular iOS-Style Checklist Checkbox */}
-                          <button 
-                            onClick={() => handleToggleTodo(todo)}
-                            disabled={selectedView === 'trash'}
-                            className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                              todo.is_completed 
-                                ? 'bg-white border-white text-black' 
-                                : selectedView === 'trash'
-                                  ? 'border-white/10 bg-transparent text-transparent cursor-not-allowed'
-                                  : 'border-white/20 bg-transparent hover:border-white/50'
-                            }`}
-                            aria-label={todo.is_completed ? 'Mark pending' : 'Mark completed'}
-                          >
-                            {todo.is_completed && <Check className="w-3 h-3 stroke-[3]" />}
-                          </button>
+                  {!collapsedSections[section] && (
+                    <div className="space-y-2.5 animate-fadeIn">
+                      {groupedTodos[section].map((todo) => (
+                        <div 
+                          key={todo.id}
+                          className={`liquid-glass liquid-interactive p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                            todo.is_completed ? 'opacity-50 border-emerald-950/10' : ''
+                          }`}
+                        >
+                          <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                            {/* Circular iOS-Style Checklist Checkbox */}
+                            <button 
+                              onClick={() => handleToggleTodo(todo)}
+                              disabled={selectedView === 'trash'}
+                              className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                                todo.is_completed 
+                                  ? 'bg-white border-white text-black' 
+                                  : selectedView === 'trash'
+                                    ? 'border-white/10 bg-transparent text-transparent cursor-not-allowed'
+                                    : 'border-white/20 bg-transparent hover:border-white/50'
+                              }`}
+                              aria-label={todo.is_completed ? 'Mark pending' : 'Mark completed'}
+                            >
+                              {todo.is_completed && <Check className="w-3 h-3 stroke-[3]" />}
+                            </button>
 
-                          <div className="space-y-1 min-w-0 flex-1">
-                            <h5 className={`text-sm font-bold text-white transition-all truncate flex items-center gap-1.5 ${
-                              todo.is_completed ? 'line-through text-slate-500' : ''
-                            }`}>
-                              {getPriorityMarker(todo.priority)}
-                              {todo.title}
-                              {todo.is_urgent && (
-                                <span className="text-[9px] bg-red-500/10 border border-red-500/20 text-red-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
-                                  Urgent
-                                </span>
-                              )}
-                              {todo.list_name && selectedView !== 'list' && (
-                                <span className="text-[9px] bg-blue-500/10 border border-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
-                                  {todo.list_name}
-                                </span>
-                              )}
-                            </h5>
-                            
-                            {todo.description && (
-                              <p className={`text-xs text-slate-400 leading-relaxed break-words max-w-2xl ${
-                                todo.is_completed ? 'line-through text-slate-500/70' : ''
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <h5 className={`text-sm font-bold text-white transition-all truncate flex items-center gap-1.5 ${
+                                todo.is_completed ? 'line-through text-slate-500' : ''
                               }`}>
-                                {todo.description}
-                              </p>
-                            )}
+                                {getPriorityMarker(todo.priority)}
+                                {todo.title}
+                                {todo.is_urgent && (
+                                  <span className="text-[9px] bg-red-500/10 border border-red-500/20 text-red-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
+                                    Urgent
+                                  </span>
+                                )}
+                                {todo.list_name && selectedView !== 'list' && (
+                                  <span className="text-[9px] bg-blue-500/10 border border-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
+                                    {todo.list_name}
+                                  </span>
+                                )}
+                              </h5>
+                              
+                              {todo.description && (
+                                <p className={`text-xs text-slate-400 leading-relaxed break-words max-w-2xl ${
+                                  todo.is_completed ? 'line-through text-slate-500/70' : ''
+                                }}`}>
+                                  {todo.description}
+                                </p>
+                              )}
 
-                            {/* URL, Tags, Location, Due Date */}
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1.5 text-[10px] text-slate-500">
-                              {todo.url && (
-                                <a 
-                                  href={todo.url.startsWith('http') ? todo.url : `https://${todo.url}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
-                                  className="flex items-center gap-1 text-blue-400 hover:underline cursor-pointer"
-                                >
-                                  <Link className="w-3 h-3" />
-                                  <span>{todo.url}</span>
-                                </a>
-                              )}
-                              {todo.due_date && (
-                                <span className="flex items-center gap-1 text-red-400/80 font-semibold">
-                                  <Calendar className="w-3 h-3" />
-                                  <span>Due {formatDate(todo.due_date)}{todo.due_time ? ` at ${todo.due_time}` : ''}</span>
-                                </span>
-                              )}
-                              {todo.location && (
-                                <span className="flex items-center gap-1 text-[#30d158]/80">
-                                  <MapPin className="w-3 h-3" />
-                                  <span>{todo.location}</span>
-                                </span>
-                              )}
-                              {todo.tags && (
-                                <div className="flex items-center gap-1 text-slate-400">
-                                  {todo.tags.split(',').map(tag => (
-                                    <span key={tag} className="bg-white/5 border border-white/5 px-1.5 py-0.5 rounded-md">
-                                      #{tag.trim()}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
+                              {/* URL, Tags, Location, Due Date */}
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1.5 text-[10px] text-slate-500">
+                                {todo.url && (
+                                  <a 
+                                    href={todo.url.startsWith('http') ? todo.url : `https://${todo.url}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="flex items-center gap-1 text-blue-400 hover:underline cursor-pointer"
+                                  >
+                                    <Link className="w-3 h-3" />
+                                    <span>{todo.url}</span>
+                                  </a>
+                                )}
+                                {todo.due_date && (
+                                  <span className="flex items-center gap-1 text-red-400/80 font-semibold">
+                                    <Calendar className="w-3 h-3" />
+                                    <span>Due {formatDate(todo.due_date)}{todo.due_time ? ` at ${todo.due_time}` : ''}</span>
+                                  </span>
+                                )}
+                                {todo.location && (
+                                  <span className="flex items-center gap-1 text-[#30d158]/80">
+                                    <MapPin className="w-3 h-3" />
+                                    <span>{todo.location}</span>
+                                  </span>
+                                )}
+                                {todo.tags && (
+                                  <div className="flex items-center gap-1 text-slate-400">
+                                    {todo.tags.split(',').map(tag => (
+                                      <span key={tag} className="bg-white/5 border border-white/5 px-1.5 py-0.5 rounded-md">
+                                        #{tag.trim()}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end border-t sm:border-t-0 border-white/5 pt-2.5 sm:pt-0">
-                          {selectedView === 'trash' ? (
-                            <>
-                              <button
-                                onClick={() => restoreTodo(todo.id)}
-                                className="p-2 text-slate-400 hover:text-emerald-400 rounded-full bg-white/0 hover:bg-emerald-400/10 border border-transparent hover:border-emerald-400/10 transition-all duration-200 cursor-pointer"
-                                title="Restore reminder"
-                              >
-                                <Undo2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => deleteTodo(todo.id, true)}
-                                className="p-2 text-slate-400 hover:text-[#ff453a] rounded-full bg-white/0 hover:bg-[#ff453a]/10 border border-transparent hover:border-[#ff453a]/10 transition-all duration-200 cursor-pointer"
-                                title="Delete permanently"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => openEditModal(todo)}
-                                className="p-2 text-slate-400 hover:text-white rounded-full bg-white/0 hover:bg-white/5 border border-transparent hover:border-white/5 transition-all duration-200 cursor-pointer"
-                                aria-label="Edit reminder"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => deleteTodo(todo.id, false)}
-                                className="p-2 text-slate-400 hover:text-[#ff453a] rounded-full bg-white/0 hover:bg-[#ff453a]/10 border border-transparent hover:border-[#ff453a]/10 transition-all duration-200 cursor-pointer"
-                                aria-label="Delete reminder"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          )}
+                          {/* Actions Dropdown */}
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end border-t sm:border-t-0 border-white/5 pt-2.5 sm:pt-0 relative">
+                            <button
+                              onClick={() => setActiveDropdownId(activeDropdownId === todo.id ? null : todo.id)}
+                              className="p-2 text-slate-400 hover:text-white rounded-full bg-white/0 hover:bg-white/5 border border-transparent hover:border-white/5 transition-all duration-200 cursor-pointer"
+                              aria-label="Actions menu"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {activeDropdownId === todo.id && (
+                              <>
+                                {/* Backdrop for click-away */}
+                                <div 
+                                  className="fixed inset-0 z-30 cursor-default" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDropdownId(null);
+                                  }}
+                                />
+                                <div className="absolute right-0 top-10 z-40 w-36 py-1.5 rounded-xl bg-[#1c1c1e] border border-white/10 shadow-2xl animate-fadeIn">
+                                  {selectedView === 'trash' ? (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setActiveDropdownId(null);
+                                          triggerConfirmModal(
+                                            "Restore Reminder",
+                                            "Are you sure you want to restore this reminder to its active lists?",
+                                            "Restore",
+                                            false,
+                                            () => restoreTodo(todo.id)
+                                          );
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-300 hover:text-emerald-400 hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer"
+                                      >
+                                        <Undo2 className="w-3.5 h-3.5" />
+                                        Restore
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setActiveDropdownId(null);
+                                          triggerConfirmModal(
+                                            "Permanently Delete",
+                                            "Are you sure you want to permanently delete this reminder? This action cannot be undone.",
+                                            "Delete Permanently",
+                                            true,
+                                            () => deleteTodo(todo.id, true)
+                                          );
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        Delete Forever
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setActiveDropdownId(null);
+                                          openEditModal(todo);
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                        Edit Details
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setActiveDropdownId(null);
+                                          triggerConfirmModal(
+                                            "Delete Reminder",
+                                            "Are you sure you want to move this reminder to the Trash?",
+                                            "Delete",
+                                            true,
+                                            () => deleteTodo(todo.id, false)
+                                          );
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        Delete
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -898,6 +1090,190 @@ export const Dashboard = () => {
                   className="liquid-btn-primary px-5 py-2 text-xs font-semibold cursor-pointer"
                 >
                   {editingTodo ? 'Save Details' : 'Create Reminder'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm bg-[#1c1c1e] border border-white/10 rounded-2xl shadow-2xl p-6 relative">
+            <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+              {confirmIsDangerous ? (
+                <AlertTriangle className="w-5 h-5 text-[#ff453a]" />
+              ) : (
+                <Info className="w-5 h-5 text-blue-400" />
+              )}
+              {confirmTitle}
+            </h3>
+            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+              {confirmMessage}
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(false)}
+                className="liquid-btn-secondary px-4 py-2 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirmAction) confirmAction();
+                  setConfirmModalOpen(false);
+                }}
+                className={`px-4 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+                  confirmIsDangerous 
+                    ? 'bg-[#ff453a] hover:bg-[#ff453a]/90 text-white font-medium shadow-[0_4px_12px_rgba(255,69,58,0.25)]' 
+                    : 'liquid-btn-primary'
+                }`}
+              >
+                {confirmBtnText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Profile Modal */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-[#1c1c1e] border border-white/10 rounded-2xl shadow-2xl p-6 relative overflow-y-auto max-h-[90vh]">
+            <button 
+              onClick={() => setIsProfileModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-white p-1.5 cursor-pointer rounded-full hover:bg-white/5 transition-all"
+              aria-label="Close profile dialog"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
+              <User className="w-4 h-4 text-blue-400" />
+              User Profile Details
+            </h3>
+
+            {profileError && (
+              <div className="bg-red-950/20 border border-red-500/20 rounded-xl p-3 text-red-400 text-xs mb-4">
+                {profileError}
+              </div>
+            )}
+
+            {profileSuccess && (
+              <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-3 text-emerald-400 text-xs mb-4">
+                Profile updated successfully!
+              </div>
+            )}
+
+            <form onSubmit={handleProfileSubmit} className="space-y-4">
+              
+              {/* Account Email (Read-only) */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                  Account Email
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={user?.email || ''}
+                  className="w-full bg-white/[0.02] border border-white/5 text-slate-500 rounded-xl py-2.5 px-3.5 text-xs cursor-not-allowed focus:outline-none"
+                />
+              </div>
+
+              {/* Full Name */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="profileFullName" className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                  Full Name <span className="text-[#ff453a]">*</span>
+                </label>
+                <input
+                  id="profileFullName"
+                  type="text"
+                  required
+                  value={profileFullName}
+                  onChange={(e) => setProfileFullName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                  className="w-full liquid-input py-2.5 px-3.5 text-xs text-white focus:outline-none"
+                />
+              </div>
+
+              {/* Company & Designation (Row) */}
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="profileCompanyName" className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    Company
+                  </label>
+                  <input
+                    id="profileCompanyName"
+                    type="text"
+                    value={profileCompanyName}
+                    onChange={(e) => setProfileCompanyName(e.target.value)}
+                    placeholder="e.g. Acme Corp"
+                    className="w-full liquid-input py-2.5 px-3.5 text-xs text-white focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="profileDesignation" className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    Designation
+                  </label>
+                  <input
+                    id="profileDesignation"
+                    type="text"
+                    value={profileDesignation}
+                    onChange={(e) => setProfileDesignation(e.target.value)}
+                    placeholder="e.g. Developer"
+                    className="w-full liquid-input py-2.5 px-3.5 text-xs text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Department & Date of Birth (Row) */}
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="profileDepartment" className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    Department
+                  </label>
+                  <input
+                    id="profileDepartment"
+                    type="text"
+                    value={profileDepartment}
+                    onChange={(e) => setProfileDepartment(e.target.value)}
+                    placeholder="e.g. Engineering"
+                    className="w-full liquid-input py-2.5 px-3.5 text-xs text-white focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="profileDateOfBirth" className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    Birth Date (YYYY-MM-DD)
+                  </label>
+                  <input
+                    id="profileDateOfBirth"
+                    type="text"
+                    value={profileDateOfBirth}
+                    onChange={(e) => setProfileDateOfBirth(e.target.value)}
+                    placeholder="YYYY-MM-DD"
+                    className="w-full liquid-input py-2.5 px-3.5 text-xs text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Form buttons */}
+              <div className="flex gap-3 justify-end pt-3 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="liquid-btn-secondary px-4 py-2 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProfileSubmitting}
+                  className="liquid-btn-primary px-5 py-2 text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  {isProfileSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
