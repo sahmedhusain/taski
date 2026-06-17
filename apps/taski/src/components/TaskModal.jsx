@@ -131,20 +131,23 @@ export const TaskModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-lg bg-[#1c1c1e] border border-white/10 rounded-2xl shadow-2xl p-6 relative overflow-y-auto max-h-[90vh]">
-        <button 
-          type="button"
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-500 hover:text-white p-1.5 cursor-pointer rounded-full hover:bg-white/5 transition-all"
-          aria-label="Close dialog"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        <h3 className="text-base font-bold text-white mb-5 flex items-center gap-2">
-          <ListTodo className="w-4 h-4 text-blue-400" />
-          {todo ? 'Edit Task Details' : 'New Task'}
-        </h3>
+      <div className="w-full max-w-2xl bg-[#1c1c1e] border border-white/10 rounded-2xl shadow-2xl p-6 relative flex flex-col max-h-[90vh] overflow-hidden">
+        
+        {/* Header (Fixed) */}
+        <div className="flex justify-between items-center mb-5 pb-3 border-b border-white/5">
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <ListTodo className="w-4 h-4 text-blue-400" />
+            {todo ? 'Edit Task Details' : 'New Task'}
+          </h3>
+          <button 
+            type="button"
+            onClick={onClose}
+            className="text-slate-500 hover:text-white p-1.5 cursor-pointer rounded-full hover:bg-white/5 transition-all"
+            aria-label="Close dialog"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         {modalError && (
           <div className="bg-red-950/20 border border-red-500/20 rounded-xl p-3 text-red-400 text-xs mb-4">
@@ -152,7 +155,9 @@ export const TaskModal = ({
           </div>
         )}
 
-        <form onSubmit={handleModalSubmit} className="space-y-4">
+        <form onSubmit={handleModalSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+          {/* Scrollable Form Content */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-4 mb-4">
           
           {/* Title & Notes Card */}
           <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 space-y-3 shadow-inner">
@@ -479,7 +484,9 @@ export const TaskModal = ({
             )}
           </div>
 
-          {/* Form buttons */}
+          </div>
+
+          {/* Form Footer (Fixed) */}
           <div className="flex gap-3 justify-end pt-3 border-t border-white/5">
             <button
               type="button"

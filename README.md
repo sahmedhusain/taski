@@ -35,17 +35,13 @@ A containerized, multi-tier ToDo application built for a technical assessment. T
 
 ## 📸 Screenshots
 
-*(Screenshots will be added here to demonstrate the desktop and mobile interface)*
-
-<!--
 ### 1. Main Dashboard View
-![Dashboard](./screenshots/dashboard_resolved.png)
+![Dashboard](./screenshots/dashboard.png)
 
 ---
 
-### 2. Mobile Layout Responsive View
-![Mobile Dashboard](./screenshots/dashboard_mobile_resolved.png)
--->
+### 2. Add New Task Modal View
+![Add New Task](./screenshots/newtask.png)
 
 ## 🏗️ The Decision: Why React + Vite?
 
