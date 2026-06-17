@@ -1,6 +1,6 @@
-# 📝 TaskI: Secure Modular ToDo Application
+# 📝 TaskI: Secure ToDo Application
 
-A containerized, multi-tier ToDo application built for a technical assessment. The project pairs a concurrent Go REST API backend with a responsive React (Vite) frontend, implementing strict security controls and rate-limiting lockout protections suited for zero-trust environments.
+A containerized ToDo application featuring a concurrent Go REST API backend and a responsive React frontend. The application is built with security in mind, featuring rate-limiting, temporary IP-based lockouts, and stateful JWT revocation on logout.
 
 [![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://golang.org/)
 [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
@@ -12,26 +12,29 @@ A containerized, multi-tier ToDo application built for a technical assessment. T
 ## 📑 Table of Contents
 - [📋 Project Overview](#-project-overview)
 - [📸 Screenshots](#-screenshots)
-- [🏗️ The Decision: Why React + Vite?](#️-the-decision-why-react--vite)
-- [🏗️ The Approach: Modular Component Architecture](#️-the-approach-modular-component-architecture)
+- [🏗️ Architectural Decisions](#️-architectural-decisions)
 - [🛠️ Tech Stack](#️-tech-stack)
 - [📐 Logic & Flow](#-logic--flow)
 - [📂 Directory Tree](#-directory-tree)
 - [🚀 Setup & Execution](#-setup--execution)
 - [⚙️ Environment Variables](#️-environment-variables)
-- [🧠 Retrospective](#-retrospective)
-- [📈 Future Scalability](#-future-scalability)
+- [🧠 Reflections & Limitations](#-reflections--limitations)
+- [📈 Future Improvements](#-future-improvements)
 - [🤝 Contributing](#-contributing)
 - [📄 License](#-license)
 - [👨‍💻 Author](#-author)
 
+---
+
 ## 📋 Project Overview
 
-**TaskI** is a secure task management application enabling users to organize daily workflows within customizable lists, collapsible sections, and strict security limits.
+**TaskI** is a task manager that allows users to organize their daily tasks inside customizable lists, collapsible sections, due dates, priorities, and a soft-delete Trash Bin.
 
-*   **The Core Loop**: Users authenticate securely, create tasks, assign priorities/due dates, group tasks into collapsible sections, and move items to a soft-delete Trash Bin.
-*   **Decoupled State**: Custom React contexts handle data synchronization, maintaining separation between auth logic and task data stores.
-*   **IP-Based Cooldowns**: Mutating APIs limit request bursts. Exceeding the rate limit triggers an immediate 5-minute block of the client's IP on both the backend and client-side.
+*   **Core Workflow**: Users register and log in securely, create tasks with optional metadata (links, locations, flags, priority levels), group them into collapsible sections, and move completed or discarded items to a Trash Bin.
+*   **State Management**: React Contexts manage authentication state and todo items independently.
+*   **IP-Based Lockout**: Mutating API endpoints are rate-limited. Exceeding the rate limit triggers an immediate 5-minute IP block on both the backend and client-side to prevent request abuse.
+
+---
 
 ## 📸 Screenshots
 
@@ -43,34 +46,35 @@ A containerized, multi-tier ToDo application built for a technical assessment. T
 ### 2. Add New Task Modal View
 ![Add New Task](./screenshots/newtask.png)
 
-## 🏗️ The Decision: Why React + Vite?
+---
 
-For this assessment, I decided to pair **Vite** with **React** to build a modern, high-speed single-page application.
+## 🏗️ Architectural Decisions
 
-### The Reasoning:
-*   **Vite Development Speed**: Vite's ESM-based hot-module replacement drastically reduced compile times, keeping feedback loops fast.
-*   **State Predictability**: Using React Contexts (`AuthContext` and `TodoContext`) allowed me to manage user credentials and task states without the overhead of heavy stores like Redux.
-*   **Modular Rendering**: Breaking the interface down into custom elements ensures the DOM updates efficiently when checklist states toggle.
+### Why React + Vite?
+*   **Fast Development**: Vite's ESM-based hot-reloading makes the development feedback loop extremely fast.
+*   **State Predictability**: React Contexts (`AuthContext` and `TodoContext`) manage authentication and task states cleanly without the boilerplate of Redux.
 
-## 🏗️ The Approach: Modular Component Architecture
+### Modular Component Architecture
+To keep the codebase maintainable, the monolithic dashboard UI was refactored into modular sub-components:
+*   **Dedicated Modals & Cards**: Split components into dedicated files: [TaskCard.jsx](file:///Users/sayed/Desktop/GitHub/todo-app/apps/taski/src/components/TaskCard.jsx) for rendering lists, [TaskModal.jsx](file:///Users/sayed/Desktop/GitHub/todo-app/apps/taski/src/components/TaskModal.jsx) for forms, [ProfileModal.jsx](file:///Users/sayed/Desktop/GitHub/todo-app/apps/taski/src/components/ProfileModal.jsx) for profiles, and [ConfirmationModal.jsx](file:///Users/sayed/Desktop/GitHub/todo-app/apps/taski/src/components/ConfirmationModal.jsx) for action prompts.
+*   **Isolated State**: Input fields, forms, and validation states are kept local to their respective modals, preventing unnecessary re-renders of the main Dashboard workspace.
 
-To maintain a clean codebase, the monolithic layout (~1600 lines) was refactored into a modular component architecture:
-
-*   **Separation of Concerns**: Extracted separate modules for rendering tasks (`TaskCard.jsx`), editing tasks (`TaskModal.jsx`), configuring user data (`ProfileModal.jsx`), and prompting double-confirms (`ConfirmationModal.jsx`).
-*   **Local State Isolation**: Form input states and sub-confirmation layers are kept local to their respective modals, preventing unnecessary re-renders of the main Dashboard workspace.
+---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
 *   **Framework**: React (Vite)
-*   **Styling**: Tailwind CSS (with custom Liquid-glass animations, modern HSL-tailored colors, and micro-interactions)
+*   **Styling**: Tailwind CSS (with custom Glassmorphic styling and transition animations)
 *   **Icons**: Lucide React
 
 ### Backend
 *   **Language**: Go (Golang)
 *   **Architecture**: Domain-Driven Design (DDD) with routes, handlers, services, repositories, and models.
-*   **Security**: IP rate-limiting, HttpOnly secure cookie-based JWT sessions, in-memory token revocation blacklist, and Origin CORS checks.
-*   **Persistence**: PostgreSQL with schema versioning controlled by migrations.
+*   **Security**: IP-based rate-limiting, HttpOnly secure session cookies, token blacklist for immediate revocation, and Origin CORS checks.
+*   **Database**: PostgreSQL with schema versioning managed via migrations.
+
+---
 
 ## 📐 Logic & Flow
 
@@ -78,7 +82,7 @@ To maintain a clean codebase, the monolithic layout (~1600 lines) was refactored
 ```mermaid
 graph TD
     A([Client Request]) --> B{Is Client IP Blocked?}
-    B -->|Yes| C([Reject: HTTP 429 - Mock Response])
+    B -->|Yes| C([Reject: HTTP 429])
     B -->|No| D[Check Token Bucket Limiter]
     
     D -->|Allowed| E[Pass to API Route Handlers]
@@ -93,7 +97,7 @@ sequenceDiagram
     participant UI as React Frontend
     participant API as Go Backend
     participant DB as PostgreSQL
-
+ 
     User->>UI: Input Credentials
     UI->>API: POST /api/auth/login
     API->>DB: Check Hash & Match User
@@ -152,6 +156,8 @@ erDiagram
     }
 ```
 
+---
+
 ## 📂 Directory Tree
 
 ```text
@@ -161,7 +167,7 @@ erDiagram
 │       └── src/
 │           ├── components/      # Modular UI Components & Modals
 │           ├── contexts/        # Auth & Todo State Contexts
-│           └── index.css        # Liquid glass CSS variables
+│           └── index.css        # Tailwind config & custom variables
 ├── database/                    # Database Schema & Migrations
 │   └── migrations/              # SQL Migration scripts
 ├── server/                      # Go REST Backend Engine
@@ -173,9 +179,13 @@ erDiagram
 └── README.md                    
 ```
 
+---
+
 ## 🚀 Setup & Execution
 
-TaskI is fully containerized and easily deployed using Docker. Refer to **[GETTING_STARTED.md](GETTING_STARTED.md)** at the root directory for step-by-step setup, test scripts, and Siege stress-benchmarks.
+TaskI is containerized and easily deployed using Docker. Refer to **[GETTING_STARTED.md](GETTING_STARTED.md)** at the root directory for step-by-step setup, test scripts, and Siege stress-benchmarks.
+
+---
 
 ## ⚙️ Environment Variables
 
@@ -193,25 +203,26 @@ The project uses a single `.env` file in the root directory:
 | `JWT_SECRET` | Secret key used to sign session cookies | `super_secure_secret_key` |
 | `ENVIRONMENT` | Project execution context | `production` |
 | `ALLOWED_ORIGINS` | CORS origin policies | `http://localhost:3000` |
-## 🧠 Retrospective
 
-### Pros
-*   **Modular Cleanliness**: Refactoring `Dashboard.jsx` simplified the core layout, easing future enhancements.
-*   **Strict Security**: In-memory token revocation and client-side lockout countdowns provide a bank-grade security user experience.
-*   **No Dependency Bloat**: Bypassing heavy React libraries on styling ensures fast startup and execution.
+---
 
-### Cons
-*   **In-Memory Storage**: Lockouts and token blacklists are currently stored in Go server RAM, which limits multi-container horizontal scaling.
-*   **State Sync Overhead**: Toggling checklist items requires frequent back-and-forth database updates; caching layers would optimize this.
+## 🧠 Reflections & Limitations
 
-## 📈 Future Scalability (FinTech Production Enhancements)
+*   **Modular Layout**: Breaking down the monolithic dashboard file made the codebase much easier to read and extend.
+*   **Simple CSS & Tailwind**: Combining Tailwind utility classes with custom glassmorphism styles in `index.css` kept styling fast and lightweight.
+*   **In-Memory Storage**: Lockouts and JWT blacklists are currently stored in Go server memory, which is appropriate for a single container but would lose state upon container restarts.
 
-While this architecture is robust for assessment purposes, deploying to a true zero-trust financial environment would require the following iterations:
+---
 
-1.  **Distributed JWT Revocation (Redis)**: Introduce a **Redis** instance to manage the Token Blacklist, ensuring immediate invalidation upon explicit user logout across multiple container nodes.
-2.  **Distributed Lockout Cache (Redis)**: Move the client IP blacklist tracking map from Go RAM to Redis to share rate limits across multiple horizontal server containers.
-3.  **Advanced CSRF Mitigations**: Supplement the `SameSite=Strict` cookie policies with an explicit Synchronizer Token Pattern (Anti-CSRF Tokens) for mutating requests.
-4.  **Field-Level Encryption**: Enforce AES-256 encryption for task description bodies and user metadata before database writes.
+## 📈 Future Improvements
+
+To move this architecture toward a production-grade scaling environment, we would look to implement the following changes:
+
+1.  **Distributed State (Redis)**: Move the Token Blacklist and client IP rate-limit tracking map from Go server RAM into a shared Redis instance to maintain state across multiple container instances.
+2.  **Advanced CSRF Mitigations**: Supplement `SameSite=Strict` cookie policies with an explicit Synchronizer Token Pattern (Anti-CSRF Tokens) for mutating requests.
+3.  **Field-Level Encryption**: Enforce AES-256 encryption for task description bodies and user metadata before database writes.
+
+---
 
 ## 🤝 Contributing
 We welcome contributions! Here's how you can help:
@@ -223,8 +234,12 @@ We welcome contributions! Here's how you can help:
 6. **Push to the branch** (`git push origin feature/amazing-feature`)
 7. **Open a Pull Request**
 
+---
+
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+---
 
 ## 👨‍💻 Author
 **Sayed Ahmed Husain**
