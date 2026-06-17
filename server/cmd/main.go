@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	log.Println("Booting Todo App Go Core Engine...")
+	log.Println("Booting TaskI Go Core Engine...")
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -93,5 +93,5 @@ func main() {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
-	log.Println("Todo App Go Core Engine shut down cleanly.")
+	log.Println("TaskI Go Core Engine shut down cleanly.")
 }

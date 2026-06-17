@@ -53,7 +53,12 @@ export const RegisterPage = () => {
 
       <div className="w-full max-w-md glass rounded-2xl p-8 shadow-2xl relative z-10">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+          <div className="flex justify-center mb-3">
+            <span className="text-4xl font-extrabold text-white tracking-wider">
+              Task<span className="text-red-500">I</span>
+            </span>
+          </div>
+          <h1 className="text-xl font-bold text-slate-350">
             Create Account
           </h1>
           <p className="text-slate-400 text-sm mt-2">

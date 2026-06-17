@@ -95,7 +95,7 @@ func (s *userService) Login(ctx context.Context, req *models.LoginRequest, jwtSe
 	// Generate JWT claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.ID,
-		"iss": "todo-app",
+		"iss": "TaskI",
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
 	})

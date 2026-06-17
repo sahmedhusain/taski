@@ -104,8 +104,8 @@ export const Dashboard = () => {
             <ListTodo className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-              Task Management
+            <h1 className="text-lg font-bold tracking-tight text-white">
+              Task<span className="text-red-500">I</span>
             </h1>
             <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
               Secure Node
