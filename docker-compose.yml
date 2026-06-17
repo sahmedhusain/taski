@@ -60,6 +60,9 @@ services:
     extra_hosts:
       - "backend:host-gateway"
       - "host.docker.internal:host-gateway"
+    environment:
+      BACKEND_PORT: "${PORT:-8080}"
+      NGINX_ENVSUBST_FILTER: "BACKEND_PORT"
     depends_on:
       - backend
 
