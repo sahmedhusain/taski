@@ -242,6 +242,7 @@ if [ "$mode_choice" -eq 1 ]; then
             case "$num" in
                 1) check_port_clash 5435 "PostgreSQL Database" ;;
                 2) check_port_clash 8085 "pgAdmin Dashboard" ;;
+                3) check_port_clash "${PORT:-8080}" "Go Backend" ;;
                 4) check_port_clash 3000 "Nginx Frontend" ;;
             esac
         done
@@ -262,10 +263,11 @@ if [ "$mode_choice" -eq 1 ]; then
         fi
         
         echo "Booting Docker containers: $SERVICES..."
-        docker compose up --build -d $SERVICES
+        docker compose up --build -d --no-deps $SERVICES
     else
         check_port_clash 5435 "PostgreSQL Database"
         check_port_clash 8085 "pgAdmin Dashboard"
+        check_port_clash "${PORT:-8080}" "Go Backend"
         check_port_clash 3000 "Nginx Frontend"
         echo "Booting all Docker containers..."
         docker compose up --build -d
