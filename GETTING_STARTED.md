@@ -43,15 +43,15 @@ From the project root directory, run:
 
 1.  **Run General Security Tests** (CORS origin checks, UUID validation, and rate limiter status):
     ```bash
-    node .gemini/antigravity/brain/dea85a4f-54e3-482f-89b3-e7bc2fe1f528/scratch/test_security.js
+    node tests/test_security.js
     ```
 2.  **Run Profile Validation Tests** (DOB, age constraints, name format, and length checks):
     ```bash
-    node .gemini/antigravity/brain/dea85a4f-54e3-482f-89b3-e7bc2fe1f528/scratch/test_profile_validations.js
+    node tests/test_profile_validations.js
     ```
 3.  **Run Email Conflict Check** (Verifying 409 status code on email updates):
     ```bash
-    node .gemini/antigravity/brain/dea85a4f-54e3-482f-89b3-e7bc2fe1f528/scratch/test_email_conflict.js
+    node tests/test_email_conflict.js
     ```
 
 ---

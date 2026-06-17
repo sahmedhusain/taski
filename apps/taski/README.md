@@ -70,6 +70,6 @@ Vite builds the assets into the `dist/` directory. These static files are loaded
 
 ### 3. Local Integration Verification Scripts
 You can run automated test scripts from the root directory to verify validations and security logic:
-*   `node .gemini/antigravity/brain/dea85a4f-54e3-482f-89b3-e7bc2fe1f528/scratch/test_security.js`
-*   `node .gemini/antigravity/brain/dea85a4f-54e3-482f-89b3-e7bc2fe1f528/scratch/test_profile_validations.js`
-*   `node .gemini/antigravity/brain/dea85a4f-54e3-482f-89b3-e7bc2fe1f528/scratch/test_email_conflict.js`
+*   `node tests/test_security.js`
+*   `node tests/test_profile_validations.js`
+*   `node tests/test_email_conflict.js`
