@@ -237,12 +237,10 @@ if [ "$mode_choice" -eq 1 ]; then
         echo "4) frontend"
         read -p "Services: " selected_numbers
         
-        # Check for port clashes on selected host ports
+        # Check for port clashes on selected host ports (only for exposed ports)
         for num in $selected_numbers; do
             case "$num" in
-                1) check_port_clash 5435 "PostgreSQL Database" ;;
                 2) check_port_clash 8085 "pgAdmin Dashboard" ;;
-                3) check_port_clash "${PORT:-8080}" "Go Backend" ;;
                 4) check_port_clash 3000 "Nginx Frontend" ;;
             esac
         done
@@ -265,9 +263,7 @@ if [ "$mode_choice" -eq 1 ]; then
         echo "Booting Docker containers: $SERVICES..."
         docker compose up --build -d --no-deps $SERVICES
     else
-        check_port_clash 5435 "PostgreSQL Database"
         check_port_clash 8085 "pgAdmin Dashboard"
-        check_port_clash "${PORT:-8080}" "Go Backend"
         check_port_clash 3000 "Nginx Frontend"
         echo "Booting all Docker containers..."
         docker compose up --build -d
@@ -293,7 +289,7 @@ else
     echo "Enter space-separated numbers (e.g., 1 2 3) to select multiple."
     echo "1) Go Backend (runs on localhost:8080)"
     echo "2) Vite Frontend (runs on localhost:3000)"
-    echo "3) PostgreSQL Database (via Docker container, maps port 5435 on host)"
+    echo "3) PostgreSQL Database (via Docker container - Note: Host port mapping disabled for security)"
     echo "4) pgAdmin Dashboard (via Docker container, maps port 8085 on host)"
     read -p "Select choice [default: 1 2 3]: " components_choice
     components_choice=${components_choice:-"1 2 3"}
@@ -320,7 +316,19 @@ else
         check_port_clash 3000 "Vite Frontend"
     fi
     if [ "$start_docker_db" -eq 1 ]; then
-        check_port_clash 5435 "PostgreSQL Database"
+        if [ "$start_local_backend" -eq 1 ]; then
+            echo "--------------------------------------------------------"
+            echo "WARNING: You selected Local Go Backend and Docker Database."
+            echo "         Since host port mapping is disabled for security,"
+            echo "         the local backend CANNOT connect to the Docker DB."
+            echo "         You should run a local PostgreSQL instance or"
+            echo "         use Docker Mode instead."
+            echo "--------------------------------------------------------"
+            read -p "Do you want to continue anyway? [y/N]: " continue_choice
+            if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+        fi
     fi
     if [ "$start_docker_pgadmin" -eq 1 ]; then
         check_port_clash 8085 "pgAdmin Dashboard"
