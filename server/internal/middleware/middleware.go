@@ -114,8 +114,9 @@ func CORSMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 
 // RateLimiter manages rate limits per IP
 type clientLimiter struct {
-	limiter  *rate.Limiter
-	lastSeen time.Time
+	limiter      *rate.Limiter
+	lastSeen     time.Time
+	blockedUntil time.Time
 }
 
 type RateLimiter struct {
@@ -137,7 +138,7 @@ func NewRateLimiter(r rate.Limit, b int) *RateLimiter {
 	return rl
 }
 
-func (rl *RateLimiter) getLimiter(ip string) *rate.Limiter {
+func (rl *RateLimiter) allowClient(ip string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -149,7 +150,19 @@ func (rl *RateLimiter) getLimiter(ip string) *rate.Limiter {
 		rl.clients[ip] = c
 	}
 	c.lastSeen = time.Now()
-	return c.limiter
+
+	// If currently blocked, deny
+	if time.Now().Before(c.blockedUntil) {
+		return false
+	}
+
+	// If rate limit is exceeded, set a 5-minute block and deny
+	if !c.limiter.Allow() {
+		c.blockedUntil = time.Now().Add(5 * time.Minute)
+		return false
+	}
+
+	return true
 }
 
 func (rl *RateLimiter) cleanupClients() {
@@ -157,9 +170,11 @@ func (rl *RateLimiter) cleanupClients() {
 		time.Sleep(1 * time.Minute)
 		rl.mu.Lock()
 		for ip, client := range rl.clients {
-			if time.Since(client.lastSeen) > 3*time.Minute {
-				delete(rl.clients, ip)
+			// Don't delete if they are currently blocked, or seen in the last 6 minutes
+			if time.Now().Before(client.blockedUntil) || time.Since(client.lastSeen) < 6*time.Minute {
+				continue
 			}
+			delete(rl.clients, ip)
 		}
 		rl.mu.Unlock()
 	}
@@ -169,8 +184,7 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := getClientIP(r)
-			limiter := rl.getLimiter(ip)
-			if !limiter.Allow() {
+			if !rl.allowClient(ip) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
 				_, _ = w.Write([]byte(`{"error":"too many requests, rate limit exceeded"}`))
