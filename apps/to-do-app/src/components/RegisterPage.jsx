@@ -57,7 +57,7 @@ export const RegisterPage = () => {
             Create Account
           </h1>
           <p className="text-slate-400 text-sm mt-2">
-            Register for a secure enterprise dashboard
+            Register for a secure dashboard
           </p>
         </div>
 

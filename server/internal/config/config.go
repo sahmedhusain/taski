@@ -27,7 +27,7 @@ func LoadConfig() (*Config, error) {
 	dbPassword := getEnv("DB_PASSWORD", "postgres")
 	dbName := getEnv("DB_NAME", "todo")
 	dbSSLMode := getEnv("DB_SSLMODE", "disable")
-	jwtSecret := getEnv("JWT_SECRET", "super_secure_enterprise_grade_jwt_secret_change_me_in_production")
+	jwtSecret := getEnv("JWT_SECRET", "super_secure_jwt_secret_change_me_in_production")
 	corsAllowed := getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")
 
 	origins := strings.Split(corsAllowed, ",")

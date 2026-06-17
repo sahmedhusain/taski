@@ -2,7 +2,7 @@
 set -e
 
 echo "========================================================"
-echo "Starting Enterprise Modular To-Do Application..."
+echo "Starting To-Do Application..."
 echo "========================================================"
 
 # 1. Check if docker is running

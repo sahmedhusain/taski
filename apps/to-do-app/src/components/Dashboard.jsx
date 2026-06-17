@@ -105,7 +105,7 @@ export const Dashboard = () => {
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-              Enterprise Task Management
+              Task Management
             </h1>
             <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
               Secure Node
@@ -252,7 +252,7 @@ export const Dashboard = () => {
               <ListTodo className="w-12 h-12 mx-auto mb-3 text-slate-600" />
               <h3 className="text-base font-bold text-slate-400">No Tasks Found</h3>
               <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
-                {searchTerm ? 'Try tweaking your search keywords.' : 'Add your first enterprise task to get started.'}
+                {searchTerm ? 'Try tweaking your search keywords.' : 'Add your first task to get started.'}
               </p>
             </div>
           ) : (

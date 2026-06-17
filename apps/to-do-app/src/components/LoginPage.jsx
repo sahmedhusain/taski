@@ -42,7 +42,7 @@ export const LoginPage = () => {
             Secure Sign In
           </h1>
           <p className="text-slate-400 text-sm mt-2">
-            Access your enterprise task dashboard
+            Access your task dashboard
           </p>
         </div>
 
