@@ -1,6 +1,6 @@
 # 🗄️ Relational Database Schema & Migrations
 
-TaskI utilizes **PostgreSQL** as its core persistent data store. Schema versioning is managed via SQL migration scripts executed automatically during service initialization.
+TaskI uses **PostgreSQL** for data persistence. Schema versioning is managed via SQL migrations that run automatically during container initialization.
 
 ---
 
@@ -44,55 +44,142 @@ erDiagram
 
 ---
 
-## 📂 Migrations Directory
+## 📂 Migrations
 
-Database changes are recorded in sequentially ordered migration files:
+Migrations are located in `database/migrations/` and executed in order:
 *   `000001_init.up.sql` / `down.sql`: Creates initial tables, UUID extension, indices, and base user/todo structures.
 *   `000002_add_reminder_features.up.sql` / `down.sql`: Introduces categories, urgency flags, tags, locations, and soft-delete support (`deleted_at`).
 *   `000003_add_user_profile_features.up.sql` / `down.sql`: Appends corporate metadata columns (`company_name`, `designation`, `department`, `date_of_birth`) to the users table.
 
 ---
 
-## 📈 Database Connection Parameters
+## 📈 Performance Optimizations & Indexes
 
-PostgreSQL runs inside a Docker container defined in `docker-compose.yml`:
-*   **Default Port**: `5432`
-*   **Database Name**: `tododb`
-*   **Indices**:
-    *   `idx_users_email_lower` on `LOWER(email)`: Speeds up logins and case-insensitive unique checks.
-    *   `idx_todos_user_id` on `todos(user_id)`: Accelerates todo fetches.
+PostgreSQL is configured inside `docker-compose.yml` with the following optimizations:
+*   `idx_users_email_lower` on `LOWER(email)`: Speeds up user credentials checks and ensures case-insensitive unique email constraints.
+*   `idx_todos_user_id` on `todos(user_id)`: Speeds up task retrieval queries.
+*   `idx_todos_deleted_at` on `todos(deleted_at)`: Optimizes queries filtering out deleted tasks (Active Workspace vs. Trash Bin).
 
 ---
 
-## 💡 Sample SQL Queries
+## 💡 Example SQL Queries
 
-Here are common SQL queries executed by the backend repository:
+Here is a list of SQL queries executed by the backend repository:
 
-#### 1. Fetching Active (Non-Deleted) Tasks for a User:
-```sql
-SELECT id, user_id, title, description, is_completed, url, due_date, due_time, is_urgent, list_name, tags, is_flagged, priority, location, section_name, created_at, updated_at
-FROM todos
-WHERE user_id = $1 AND deleted_at IS NULL
-ORDER BY created_at DESC;
-```
+### 1. User Account Operations
 
-#### 2. Soft-Deleting a Task (Moving to Trash):
-```sql
-UPDATE todos
-SET deleted_at = CURRENT_TIMESTAMP
-WHERE id = $1 AND user_id = $2;
-```
+*   **Create User**:
+    ```sql
+    INSERT INTO users (id, email, full_name, password_hash, created_at)
+    VALUES ('uuid-here', 'user@domain.com', 'John Doe', '$2a$12$hash...', CURRENT_TIMESTAMP);
+    ```
 
-#### 3. Restoring a Task from Trash:
-```sql
-UPDATE todos
-SET deleted_at = NULL
-WHERE id = $1 AND user_id = $2;
-```
+*   **Get User by Case-Insensitive Email**:
+    ```sql
+    SELECT id, email, full_name, password_hash, company_name, designation, department, date_of_birth, created_at
+    FROM users
+    WHERE LOWER(email) = LOWER('user@domain.com');
+    ```
 
-#### 4. Updating User Corporate Profile:
-```sql
-UPDATE users
-SET email = $1, full_name = $2, company_name = $3, designation = $4, department = $5, date_of_birth = $6
-WHERE id = $7;
-```
+*   **Update Corporate Profile Metadata**:
+    ```sql
+    UPDATE users
+    SET email = 'new-email@domain.com',
+        full_name = 'John Doe Updated',
+        company_name = 'Enterprise Corp',
+        designation = 'Staff Engineer',
+        department = 'Core Infrastructure',
+        date_of_birth = '1990-05-12'
+    WHERE id = 'user-uuid';
+    ```
+
+### 2. Task Operations
+
+*   **Fetch Active Tasks**:
+    ```sql
+    SELECT id, user_id, title, description, is_completed, url, due_date, due_time, is_urgent, list_name, tags, is_flagged, priority, location, section_name, created_at, updated_at
+    FROM todos
+    WHERE user_id = 'user-uuid' AND deleted_at IS NULL
+    ORDER BY created_at DESC;
+    ```
+
+*   **Fetch Deleted Tasks (Trash Bin)**:
+    ```sql
+    SELECT id, user_id, title, description, is_completed, url, due_date, due_time, is_urgent, list_name, tags, is_flagged, priority, location, section_name, deleted_at, created_at
+    FROM todos
+    WHERE user_id = 'user-uuid' AND deleted_at IS NOT NULL
+    ORDER BY deleted_at DESC;
+    ```
+
+*   **Create Task**:
+    ```sql
+    INSERT INTO todos (id, user_id, title, description, is_completed, url, due_date, due_time, is_urgent, list_name, tags, is_flagged, priority, location, section_name, created_at, updated_at)
+    VALUES ('todo-uuid', 'user-uuid', 'Audit Codebase', 'Description here', FALSE, 'https://github.com', '2026-06-20', '12:00', TRUE, 'Work', 'security,audit', TRUE, 'High', 'Room 101', 'Auditing', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+    ```
+
+*   **Update Task**:
+    ```sql
+    UPDATE todos
+    SET title = 'Updated Title',
+        description = 'Updated Description',
+        is_completed = TRUE,
+        url = 'https://new-url.com',
+        due_date = '2026-06-25',
+        due_time = '15:00',
+        is_urgent = FALSE,
+        list_name = 'Personal',
+        tags = 'updated-tag',
+        is_flagged = FALSE,
+        priority = 'Medium',
+        location = 'Remote',
+        section_name = 'General',
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = 'todo-uuid' AND user_id = 'user-uuid';
+    ```
+
+*   **Soft Delete Task (Move to Trash)**:
+    ```sql
+    UPDATE todos
+    SET deleted_at = CURRENT_TIMESTAMP
+    WHERE id = 'todo-uuid' AND user_id = 'user-uuid';
+    ```
+
+*   **Restore Task from Trash**:
+    ```sql
+    UPDATE todos
+    SET deleted_at = NULL
+    WHERE id = 'todo-uuid' AND user_id = 'user-uuid';
+    ```
+
+*   **Hard Delete Task (Permanently Remove)**:
+    ```sql
+    DELETE FROM todos
+    WHERE id = 'todo-uuid' AND user_id = 'user-uuid';
+    ```
+
+*   **Empty Trash Bin**:
+    ```sql
+    DELETE FROM todos
+    WHERE user_id = 'user-uuid' AND deleted_at IS NOT NULL;
+    ```
+
+### 3. Statistics and Aggregations
+
+*   **Count Tasks by List (Active vs Deleted)**:
+    ```sql
+    SELECT list_name, 
+           COUNT(*) FILTER (WHERE deleted_at IS NULL) as active_count,
+           COUNT(*) FILTER (WHERE deleted_at IS NOT NULL) as trashed_count
+    FROM todos
+    WHERE user_id = 'user-uuid'
+    GROUP BY list_name;
+    ```
+
+*   **Count Task Counts by Section in a List**:
+    ```sql
+    SELECT COALESCE(NULLIF(section_name, ''), 'No Section') as section,
+           COUNT(*) as count
+    FROM todos
+    WHERE user_id = 'user-uuid' AND list_name = 'Work' AND deleted_at IS NULL
+    GROUP BY section_name;
+    ```
