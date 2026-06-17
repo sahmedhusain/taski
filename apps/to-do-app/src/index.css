@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100;
+  }
+}
+
+/* Glassmorphism utility classes */
+.glass {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-hover:hover {
+  background: rgba(15, 23, 42, 0.75);
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Modern Web Guidance: Form Interaction & Validation Styling */
+input:user-invalid,
+textarea:user-invalid,
+select:user-invalid {
+  @apply border-red-500/50 bg-red-950/20 focus:ring-red-500/50 focus:border-red-500;
+}
+
+input:user-valid,
+textarea:user-valid,
+select:user-valid {
+  @apply border-emerald-500/50 bg-emerald-950/20 focus:ring-emerald-500/50 focus:border-emerald-500;
+}
+
+/* Reveal error messages adjacent to invalid inputs */
+.error-message {
+  display: none;
+}
+
+input:user-invalid + .error-message,
+textarea:user-invalid + .error-message {
+  display: block;
+}
+
+/* Custom visual highlights on forms using the modern :has selector */
+.form-field:has(input:user-invalid) label {
+  @apply text-red-400;
+}
+
+.form-field:has(input:user-valid) label {
+  @apply text-emerald-400;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-950;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-800 rounded-full hover:bg-slate-700 transition-colors;
+}
+
+/* Custom Pulse/Gradient Animations */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
