@@ -14,6 +14,7 @@ export const useTodos = () => {
 export const TodoProvider = ({ children }) => {
   const { user } = useAuth();
   const [todos, setTodos] = useState([]);
+  const [deletedTodos, setDeletedTodos] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -35,21 +36,49 @@ export const TodoProvider = ({ children }) => {
     }
   };
 
+  const fetchDeletedTodos = async () => {
+    if (!user) return;
+    setError(null);
+    try {
+      const response = await fetch('/api/todos?deleted=true');
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch deleted tasks');
+      }
+      setDeletedTodos(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const refreshAll = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      await Promise.all([fetchTodos(), fetchDeletedTodos()]);
+    } catch (err) {
+      console.error('Failed to refresh task lists:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
-      fetchTodos();
+      refreshAll();
     } else {
       setTodos([]);
+      setDeletedTodos([]);
     }
   }, [user]);
 
-  const addTodo = async (title, description) => {
+  const addTodo = async (todoData) => {
     setError(null);
     try {
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description }),
+        body: JSON.stringify(todoData),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -78,6 +107,7 @@ export const TodoProvider = ({ children }) => {
       setTodos((prev) =>
         prev.map((t) => (t.id === id ? data : t))
       );
+      // If it was modified, it might also have changed lists/stats, so a refresh is safe
       return data;
     } catch (err) {
       setError(err.message);
@@ -85,17 +115,51 @@ export const TodoProvider = ({ children }) => {
     }
   };
 
-  const deleteTodo = async (id) => {
+  const deleteTodo = async (id, permanent = false) => {
     setError(null);
     try {
-      const response = await fetch(`/api/todo?id=${id}`, {
+      const url = `/api/todo?id=${id}${permanent ? '&permanent=true' : ''}`;
+      const response = await fetch(url, {
         method: 'DELETE',
       });
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || 'Failed to delete task');
       }
-      setTodos((prev) => prev.filter((t) => t.id !== id));
+      if (permanent) {
+        setDeletedTodos((prev) => prev.filter((t) => t.id !== id));
+      } else {
+        // Move to soft-deleted list local state
+        const deletedItem = todos.find((t) => t.id === id);
+        setTodos((prev) => prev.filter((t) => t.id !== id));
+        if (deletedItem) {
+          setDeletedTodos((prev) => [deletedItem, ...prev]);
+        }
+      }
+      // Trigger refresh to keep sync
+      refreshAll();
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const restoreTodo = async (id) => {
+    setError(null);
+    try {
+      const response = await fetch(`/api/todo?id=${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restore: true }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to restore task');
+      }
+      setDeletedTodos((prev) => prev.filter((t) => t.id !== id));
+      setTodos((prev) => [data, ...prev]);
+      refreshAll();
+      return data;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -104,12 +168,16 @@ export const TodoProvider = ({ children }) => {
 
   const value = {
     todos,
+    deletedTodos,
     isLoading,
     error,
     fetchTodos,
+    fetchDeletedTodos,
+    refreshAll,
     addTodo,
     updateTodo,
     deleteTodo,
+    restoreTodo,
   };
 
   return <TodoContext.Provider value={value}>{children}</TodoContext.Provider>;

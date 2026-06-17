@@ -63,3 +63,25 @@ func ValidateFullName(fullName string) error {
 	}
 	return nil
 }
+
+func ValidateDateOfBirth(dob string) error {
+	if dob == "" {
+		return nil // optional
+	}
+	dobRegex := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	if !dobRegex.MatchString(dob) {
+		return errors.New("date of birth must be in YYYY-MM-DD format")
+	}
+	return nil
+}
+
+func ValidateProfileField(field string, fieldName string) error {
+	if len(field) > 100 {
+		return errors.New(fieldName + " must not exceed 100 characters")
+	}
+	validChars := regexp.MustCompile(`^[a-zA-Z0-9\s'\-.,&()]*$`)
+	if field != "" && !validChars.MatchString(field) {
+		return errors.New(fieldName + " contains invalid characters")
+	}
+	return nil
+}

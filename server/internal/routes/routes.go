@@ -23,6 +23,7 @@ func SetupRoutes(cfg *config.Config, h *handlers.Handler) http.Handler {
 	authOnly := middleware.AuthMiddleware(cfg)
 
 	mux.Handle("/api/auth/me", authOnly(http.HandlerFunc(h.Me)))
+	mux.Handle("/api/auth/profile", authOnly(http.HandlerFunc(h.UpdateProfile)))
 	mux.Handle("/api/todos", authOnly(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			h.GetTodos(w, r)

@@ -135,6 +135,42 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	h.respondWithJSON(w, http.StatusOK, userRes)
 }
 
+func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		h.respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		h.respondWithError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req models.UpdateProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.respondWithError(w, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+
+	res, err := h.userService.UpdateProfile(r.Context(), userID, &req)
+	if err != nil {
+		if errors.Is(err, services.ErrNotFound) {
+			h.respondWithError(w, http.StatusNotFound, "user not found")
+			return
+		}
+		if errors.Is(err, services.ErrInvalidInput) {
+			h.respondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		h.respondWithError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	h.respondWithJSON(w, http.StatusOK, res)
+}
+
+
 // Todo Handlers
 func (h *Handler) GetTodos(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -143,7 +179,15 @@ func (h *Handler) GetTodos(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID, _ := r.Context().Value(middleware.UserIDKey).(string)
-	todos, err := h.todoService.GetByUserID(r.Context(), userID)
+	var todos []*models.Todo
+	var err error
+
+	if r.URL.Query().Get("deleted") == "true" {
+		todos, err = h.todoService.GetDeletedByUserID(r.Context(), userID)
+	} else {
+		todos, err = h.todoService.GetByUserID(r.Context(), userID)
+	}
+
 	if err != nil {
 		h.respondWithError(w, http.StatusInternalServerError, "failed to get todos")
 		return
@@ -256,7 +300,13 @@ func (h *Handler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.todoService.Delete(r.Context(), userID, todoID)
+	var err error
+	if r.URL.Query().Get("permanent") == "true" {
+		err = h.todoService.HardDelete(r.Context(), userID, todoID)
+	} else {
+		err = h.todoService.Delete(r.Context(), userID, todoID)
+	}
+
 	if err != nil {
 		if errors.Is(err, services.ErrNotFound) {
 			h.respondWithError(w, http.StatusNotFound, "todo not found")

@@ -124,14 +124,24 @@ apply_migrations() {
             sleep 2
         done
         echo "Applying raw SQL migrations to Docker database..."
-        docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" < database/migrations/000001_init.up.sql
+        for f in database/migrations/*.up.sql; do
+            if [ -f "$f" ]; then
+                echo "Running migration: $(basename "$f")..."
+                docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" < "$f"
+            fi
+        done
         echo "Migrations applied successfully."
     # 2. Otherwise, check if we can connect to a local PostgreSQL using local psql
     elif command -v psql >/dev/null 2>&1; then
         echo "Checking local PostgreSQL connection at $DB_HOST:$DB_PORT..."
         if PGPASSWORD=$DB_PASSWORD psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c '\q' >/dev/null 2>&1; then
             echo "Applying raw SQL migrations to local PostgreSQL ($DB_HOST:$DB_PORT)..."
-            PGPASSWORD=$DB_PASSWORD psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < database/migrations/000001_init.up.sql
+            for f in database/migrations/*.up.sql; do
+                if [ -f "$f" ]; then
+                    echo "Running migration: $(basename "$f")..."
+                    PGPASSWORD=$DB_PASSWORD psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" < "$f"
+                fi
+            done
             echo "Migrations applied successfully."
         else
             echo "Warning: Could not connect to local PostgreSQL database at $DB_HOST:$DB_PORT."
@@ -139,7 +149,7 @@ apply_migrations() {
         fi
     else
         echo "Warning: No running Docker db container detected, and 'psql' client is not installed."
-        echo "Skipping migrations. Make sure you apply database/migrations/000001_init.up.sql manually."
+        echo "Skipping migrations. Make sure you apply migrations manually."
     fi
 }
 

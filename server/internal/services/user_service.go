@@ -28,6 +28,7 @@ type UserService interface {
 	Register(ctx context.Context, req *models.RegisterRequest) (*models.UserResponse, error)
 	Login(ctx context.Context, req *models.LoginRequest, jwtSecret []byte) (string, *models.UserResponse, error)
 	GetUserByID(ctx context.Context, id string) (*models.UserResponse, error)
+	UpdateProfile(ctx context.Context, userID string, req *models.UpdateProfileRequest) (*models.UserResponse, error)
 }
 
 type userService struct {
@@ -80,10 +81,14 @@ func (s *userService) Register(ctx context.Context, req *models.RegisterRequest)
 	}
 
 	return &models.UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		FullName:  user.FullName,
-		CreatedAt: user.CreatedAt,
+		ID:          user.ID,
+		Email:       user.Email,
+		FullName:    user.FullName,
+		CompanyName: user.CompanyName,
+		Designation: user.Designation,
+		Department:  user.Department,
+		DateOfBirth: user.DateOfBirth,
+		CreatedAt:   user.CreatedAt,
 	}, nil
 }
 
@@ -120,10 +125,14 @@ func (s *userService) Login(ctx context.Context, req *models.LoginRequest, jwtSe
 	}
 
 	return tokenString, &models.UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		FullName:  user.FullName,
-		CreatedAt: user.CreatedAt,
+		ID:          user.ID,
+		Email:       user.Email,
+		FullName:    user.FullName,
+		CompanyName: user.CompanyName,
+		Designation: user.Designation,
+		Department:  user.Department,
+		DateOfBirth: user.DateOfBirth,
+		CreatedAt:   user.CreatedAt,
 	}, nil
 }
 
@@ -136,9 +145,70 @@ func (s *userService) GetUserByID(ctx context.Context, id string) (*models.UserR
 		return nil, ErrNotFound
 	}
 	return &models.UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		FullName:  user.FullName,
-		CreatedAt: user.CreatedAt,
+		ID:          user.ID,
+		Email:       user.Email,
+		FullName:    user.FullName,
+		CompanyName: user.CompanyName,
+		Designation: user.Designation,
+		Department:  user.Department,
+		DateOfBirth: user.DateOfBirth,
+		CreatedAt:   user.CreatedAt,
+	}, nil
+}
+
+func (s *userService) UpdateProfile(ctx context.Context, userID string, req *models.UpdateProfileRequest) (*models.UserResponse, error) {
+	fullName := strings.TrimSpace(req.FullName)
+	if fullName == "" {
+		return nil, fmt.Errorf("%w: full name is required", ErrInvalidInput)
+	}
+	if err := validation.ValidateFullName(fullName); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+
+	companyName := strings.TrimSpace(req.CompanyName)
+	designation := strings.TrimSpace(req.Designation)
+	department := strings.TrimSpace(req.Department)
+	dateOfBirth := strings.TrimSpace(req.DateOfBirth)
+
+	if err := validation.ValidateProfileField(companyName, "company name"); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+	if err := validation.ValidateProfileField(designation, "designation"); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+	if err := validation.ValidateProfileField(department, "department"); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+	if err := validation.ValidateDateOfBirth(dateOfBirth); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrNotFound
+	}
+
+	user.FullName = fullName
+	user.CompanyName = companyName
+	user.Designation = designation
+	user.Department = department
+	user.DateOfBirth = dateOfBirth
+
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return &models.UserResponse{
+		ID:          user.ID,
+		Email:       user.Email,
+		FullName:    user.FullName,
+		CompanyName: user.CompanyName,
+		Designation: user.Designation,
+		Department:  user.Department,
+		DateOfBirth: user.DateOfBirth,
+		CreatedAt:   user.CreatedAt,
 	}, nil
 }
