@@ -3,6 +3,7 @@ package validation
 import (
 	"errors"
 	"regexp"
+	"time"
 )
 
 var (
@@ -71,6 +72,26 @@ func ValidateDateOfBirth(dob string) error {
 	dobRegex := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 	if !dobRegex.MatchString(dob) {
 		return errors.New("date of birth must be in YYYY-MM-DD format")
+	}
+	t, err := time.Parse("2006-01-02", dob)
+	if err != nil {
+		return errors.New("invalid date of birth format")
+	}
+	today := time.Now().UTC()
+	if t.After(today) {
+		return errors.New("date of birth cannot be in the future")
+	}
+
+	years := today.Year() - t.Year()
+	if today.Month() < t.Month() || (today.Month() == t.Month() && today.Day() < t.Day()) {
+		years--
+	}
+
+	if years < 12 {
+		return errors.New("you must be at least 12 years old")
+	}
+	if years > 120 {
+		return errors.New("invalid date of birth (age cannot exceed 120 years)")
 	}
 	return nil
 }

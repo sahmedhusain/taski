@@ -222,6 +222,8 @@ textarea:user-valid {
   display: none;
 }
 
+.relative:has(input:user-invalid) ~ .error-message,
+.relative:has(textarea:user-invalid) ~ .error-message,
 input:user-invalid ~ .error-message,
 textarea:user-invalid ~ .error-message {
   display: block;

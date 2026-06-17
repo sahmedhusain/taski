@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -49,6 +50,29 @@ func parseDueDate(dateStr *string) *time.Time {
 	return nil
 }
 
+func validateDueDateTime(dueDate *time.Time, dueTime string) error {
+	if dueDate == nil {
+		return nil
+	}
+	now := time.Now().UTC()
+	if dueTime != "" {
+		var hour, min int
+		_, err := fmt.Sscanf(dueTime, "%d:%d", &hour, &min)
+		if err == nil {
+			fullDueDate := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), hour, min, 0, 0, time.UTC)
+			if fullDueDate.Before(now) {
+				return errors.New("due date and time cannot be in the past")
+			}
+		}
+	} else {
+		endOfDay := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 23, 59, 59, 999999999, time.UTC)
+		if endOfDay.Before(now) {
+			return errors.New("due date cannot be in the past")
+		}
+	}
+	return nil
+}
+
 func (s *todoService) Create(ctx context.Context, userID string, req *models.CreateTodoRequest) (*models.Todo, error) {
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
@@ -65,6 +89,11 @@ func (s *todoService) Create(ctx context.Context, userID string, req *models.Cre
 		priority = "None"
 	}
 
+	dueDate := parseDueDate(req.DueDate)
+	if err := validateDueDateTime(dueDate, req.DueTime); err != nil {
+		return nil, err
+	}
+
 	now := time.Now().UTC()
 	todo := &models.Todo{
 		ID:          uuid.NewString(),
@@ -73,7 +102,7 @@ func (s *todoService) Create(ctx context.Context, userID string, req *models.Cre
 		Description: req.Description,
 		IsCompleted: false,
 		URL:         req.URL,
-		DueDate:     parseDueDate(req.DueDate),
+		DueDate:     dueDate,
 		DueTime:     req.DueTime,
 		IsUrgent:    req.IsUrgent,
 		ListName:    listName,
@@ -127,6 +156,37 @@ func (s *todoService) Update(ctx context.Context, userID, id string, req *models
 		return nil, ErrUnauthorized
 	}
 
+	newDueDate := todo.DueDate
+	newDueTime := todo.DueTime
+	dateOrTimeChanged := false
+
+	if req.DueDate != nil {
+		newDueDate = parseDueDate(req.DueDate)
+		dateOrTimeChanged = true
+	}
+	if req.DueTime != "" {
+		newDueTime = req.DueTime
+		dateOrTimeChanged = true
+	}
+
+	if dateOrTimeChanged {
+		isDifferent := false
+		if (newDueDate == nil) != (todo.DueDate == nil) {
+			isDifferent = true
+		} else if newDueDate != nil && todo.DueDate != nil && !newDueDate.Equal(*todo.DueDate) {
+			isDifferent = true
+		}
+		if newDueTime != todo.DueTime {
+			isDifferent = true
+		}
+
+		if isDifferent && newDueDate != nil {
+			if err := validateDueDateTime(newDueDate, newDueTime); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	updated := false
 
 	if req.Title != "" {
@@ -146,11 +206,11 @@ func (s *todoService) Update(ctx context.Context, userID, id string, req *models
 		updated = true
 	}
 	if req.DueDate != nil {
-		todo.DueDate = parseDueDate(req.DueDate)
+		todo.DueDate = newDueDate
 		updated = true
 	}
 	if req.DueTime != "" {
-		todo.DueTime = req.DueTime
+		todo.DueTime = newDueTime
 		updated = true
 	}
 	if req.IsUrgent != nil {

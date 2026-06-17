@@ -75,9 +75,9 @@ export const LoginPage = () => {
                 placeholder="you@example.com"
                 className="w-full liquid-input py-3 pl-11 pr-4 text-sm focus:outline-none"
               />
-              <div className="error-message text-red-400 text-xs mt-1">
-                Please enter a valid email address (e.g. name@domain.com).
-              </div>
+            </div>
+            <div className="error-message text-red-400 text-xs mt-1">
+              Please enter a valid email address (e.g. name@domain.com).
             </div>
           </div>
 
@@ -105,9 +105,9 @@ export const LoginPage = () => {
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
-              <div className="error-message text-red-400 text-xs mt-1">
-                Password is required.
-              </div>
+            </div>
+            <div className="error-message text-red-400 text-xs mt-1">
+              Password is required.
             </div>
           </div>
 

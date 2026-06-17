@@ -120,9 +120,9 @@ export const RegisterPage = () => {
                     placeholder="e.g. John Doe"
                     className="w-full liquid-input py-3 pl-11 pr-4 text-sm focus:outline-none"
                   />
-                  <div className="error-message text-red-400 text-xs mt-1">
-                    Full name must only contain letters, spaces, hyphens, periods, or apostrophes.
-                  </div>
+                </div>
+                <div className="error-message text-red-400 text-xs mt-1">
+                  Full name must only contain letters, spaces, hyphens, periods, or apostrophes.
                 </div>
               </div>
 
@@ -142,9 +142,9 @@ export const RegisterPage = () => {
                     placeholder="you@example.com"
                     className="w-full liquid-input py-3 pl-11 pr-4 text-sm focus:outline-none"
                   />
-                  <div className="error-message text-red-400 text-xs mt-1">
-                    Please enter a valid email address.
-                  </div>
+                </div>
+                <div className="error-message text-red-400 text-xs mt-1">
+                  Please enter a valid email address.
                 </div>
               </div>
 
@@ -173,9 +173,9 @@ export const RegisterPage = () => {
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                  <div className="error-message text-red-400 text-xs mt-1">
-                    Password must contain at least 8 characters, one uppercase, one lowercase, one digit, and one special character.
-                  </div>
+                </div>
+                <div className="error-message text-red-400 text-xs mt-1">
+                  Password must contain at least 8 characters, one uppercase, one lowercase, one digit, and one special character.
                 </div>
               </div>
 
@@ -195,9 +195,9 @@ export const RegisterPage = () => {
                     placeholder="Re-enter password"
                     className="w-full liquid-input py-3 pl-11 pr-12 text-sm focus:outline-none"
                   />
-                  <div className="error-message text-red-400 text-xs mt-1">
-                    Passwords must match.
-                  </div>
+                </div>
+                <div className="error-message text-red-400 text-xs mt-1">
+                  Passwords must match.
                 </div>
               </div>
 

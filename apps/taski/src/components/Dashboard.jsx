@@ -302,6 +302,30 @@ export const Dashboard = () => {
         setProfileError('Date of Birth must be in YYYY-MM-DD format');
         return;
       }
+
+      const dobDate = new Date(profileDateOfBirth);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (dobDate > today) {
+        setProfileError('Date of Birth cannot be in the future');
+        return;
+      }
+
+      let age = today.getFullYear() - dobDate.getFullYear();
+      const m = today.getMonth() - dobDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+        age--;
+      }
+
+      if (age < 12) {
+        setProfileError('You must be at least 12 years old');
+        return;
+      }
+      if (age > 120) {
+        setProfileError('Invalid Date of Birth (age cannot exceed 120 years)');
+        return;
+      }
     }
 
     if (profileCompanyName.length > 100) {
@@ -369,6 +393,31 @@ export const Dashboard = () => {
     if (!todoTitle.trim()) {
       setModalError('Title is required');
       return;
+    }
+
+    // Check if date or time has changed or if it's a new task
+    const isDateChanged = todoDate !== (editingTodo?.due_date ? new Date(editingTodo.due_date).toISOString().split('T')[0] : '');
+    const isTimeChanged = todoTime !== (editingTodo?.due_time || '');
+    const isHasDateChanged = hasDate !== !!editingTodo?.due_date;
+    const isHasTimeChanged = hasTime !== !!editingTodo?.due_time;
+
+    if (!editingTodo || isDateChanged || isTimeChanged || isHasDateChanged || isHasTimeChanged) {
+      if (hasDate && todoDate) {
+        const selectedDateTime = new Date(todoDate);
+        if (hasTime && todoTime) {
+          const [hours, minutes] = todoTime.split(':');
+          selectedDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        } else {
+          // If no time is specified, allow tasks due today by checking against end of day
+          selectedDateTime.setHours(23, 59, 59, 999);
+        }
+
+        const now = new Date();
+        if (selectedDateTime < now) {
+          setModalError('Due date and time cannot be in the past');
+          return;
+        }
+      }
     }
 
     const payload = {
@@ -1409,14 +1458,14 @@ export const Dashboard = () => {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="profileDateOfBirth" className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                    Birth Date (YYYY-MM-DD)
+                    Birth Date
                   </label>
                   <input
                     id="profileDateOfBirth"
-                    type="text"
+                    type="date"
                     value={profileDateOfBirth}
                     onChange={(e) => setProfileDateOfBirth(e.target.value)}
-                    placeholder="YYYY-MM-DD"
+                    max={new Date().toISOString().split('T')[0]}
                     className="w-full liquid-input py-2.5 px-3.5 text-xs text-white focus:outline-none"
                   />
                 </div>
