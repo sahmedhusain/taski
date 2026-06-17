@@ -67,7 +67,7 @@ To maintain a clean codebase, the monolithic layout (~1600 lines) was refactored
 
 ### Frontend
 *   **Framework**: React (Vite)
-*   **Styling**: Vanilla CSS (Liquid-glass animations, modern HSL-tailored colors, and micro-interactions)
+*   **Styling**: Tailwind CSS (with custom Liquid-glass animations, modern HSL-tailored colors, and micro-interactions)
 *   **Icons**: Lucide React
 
 ### Backend
