@@ -189,20 +189,22 @@ TaskI is containerized and easily deployed using Docker. Refer to **[GETTING_STA
 
 ## ⚙️ Environment Variables
 
-The project uses a single `.env` file in the root directory:
+The project uses a single `.env` file in the root directory (copy `.env.example` to get started):
 
 | Variable | Description | Default / Example |
 | :--- | :--- | :--- |
 | `PORT` | Go REST API backend listener port | `8080` |
+| `ENVIRONMENT` | Project execution context | `production` |
 | `DB_HOST` | Database server address | `db` |
 | `DB_PORT` | PostgreSQL port | `5432` |
-| `DB_USER` | DB username | `todouser` |
-| `DB_PASSWORD` | DB connection password | `todopassword` |
-| `DB_NAME` | Relational database name | `tododb` |
+| `DB_USER` | DB username | `postgres` |
+| `DB_PASSWORD` | DB connection password | `postgres` |
+| `DB_NAME` | Relational database name | `todo` |
 | `DB_SSLMODE` | SSL security configuration | `disable` |
-| `JWT_SECRET` | Secret key used to sign session cookies | `super_secure_secret_key` |
-| `ENVIRONMENT` | Project execution context | `production` |
-| `ALLOWED_ORIGINS` | CORS origin policies | `http://localhost:3000` |
+| `JWT_SECRET` | Secret key used to sign session cookies | **No safe default** — must be set to a unique, high-entropy value (`openssl rand -base64 32`). The backend refuses to start in production with the default or a short value. |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins | `http://localhost:3000,http://localhost:5173` |
+| `PGADMIN_EMAIL` | Login email for the local pgAdmin UI (bound to `127.0.0.1` only) | `admin@taski.com` |
+| `PGADMIN_PASSWORD` | Login password for the local pgAdmin UI | `admin` |
 
 ---
 

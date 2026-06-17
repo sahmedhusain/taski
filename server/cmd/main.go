@@ -39,9 +39,19 @@ func main() {
 
 	slog.Info("Booting TaskI Go Core Engine...")
 
-	// Security Check (SEC-07): Warn if running in production with default secrets
-	if cfg.Environment == "production" && string(cfg.JWTSecret) == "super_secure_jwt_secret_change_me_in_production" {
-		slog.Warn("[SECURITY WARNING] JWT_SECRET is set to the default fallback value in a production environment! This is a major security risk. Please configure a unique, high-entropy key.")
+	// Security Check (SEC-07): Refuse to start in production with a default or low-entropy JWT secret.
+	const defaultJWTSecret = "super_secure_jwt_secret_change_me_in_production"
+	if cfg.Environment == "production" {
+		if string(cfg.JWTSecret) == defaultJWTSecret {
+			slog.Error("[SECURITY] JWT_SECRET is set to the well-known default fallback value in a production environment. Refusing to start.")
+			os.Exit(1)
+		}
+		if len(cfg.JWTSecret) < 32 {
+			slog.Error("[SECURITY] JWT_SECRET is too short for production use (minimum 32 bytes of entropy required). Refusing to start.")
+			os.Exit(1)
+		}
+	} else if string(cfg.JWTSecret) == defaultJWTSecret {
+		slog.Warn("[SECURITY WARNING] JWT_SECRET is set to the default fallback value. This is fine for local development only.")
 	}
 
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",

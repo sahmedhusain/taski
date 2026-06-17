@@ -140,8 +140,13 @@ async function runTests() {
         path: '/api/auth/register',
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-Forwarded-For': '198.51.100.42' // Spoof IP to keep rate limiting clean and isolated
+          'Content-Type': 'application/json'
+          // NOTE: X-Forwarded-For is intentionally NOT used here to "isolate" this test.
+          // The backend no longer trusts client-supplied X-Forwarded-For for rate-limit
+          // identity (only X-Real-IP, which our nginx proxy always overwrites with the
+          // true connecting address, or the proxy-appended last X-Forwarded-For entry).
+          // Spoofing this header can no longer bypass the rate limiter; this test now
+          // shares rate-limit state with the runner's real IP, like any other client.
         }
       }, JSON.stringify({}));
       

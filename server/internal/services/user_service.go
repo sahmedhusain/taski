@@ -24,6 +24,12 @@ var (
 	ErrInvalidInput       = errors.New("invalid input data")
 )
 
+// dummyPasswordHash is a precomputed bcrypt hash (cost 12) of an arbitrary, non-secret
+// string. It is never compared against a real password; Login runs a comparison against
+// it when no user is found so that the unknown-email and wrong-password paths take
+// comparable time, preventing user enumeration via response-timing analysis.
+const dummyPasswordHash = "$2a$12$Gmx.UtSTgZ9ITbr3IgjhTetv00yFQLd3V.TF7k7wR.Za0hQ/ZYJcu"
+
 type UserService interface {
 	Register(ctx context.Context, req *models.RegisterRequest) (*models.UserResponse, error)
 	Login(ctx context.Context, req *models.LoginRequest, jwtSecret []byte) (string, *models.UserResponse, error)
@@ -103,6 +109,9 @@ func (s *userService) Login(ctx context.Context, req *models.LoginRequest, jwtSe
 		return "", nil, err
 	}
 	if user == nil {
+		// Run a dummy comparison so this path takes comparable time to a real failed
+		// login (below), preventing email enumeration via response timing.
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(req.Password))
 		return "", nil, ErrInvalidCredentials
 	}
 

@@ -1,6 +1,6 @@
 # 🗄️ Relational Database Schema & Migrations
 
-TaskI uses **PostgreSQL** for data persistence. Schema versioning is managed via SQL migrations that run automatically during container initialization.
+TaskI uses **PostgreSQL** for data persistence. Schema versioning is managed via explicit, version-controlled SQL migration files, applied via `run.sh` (or `docker compose exec db psql ... < migration.sql`) rather than an implicit ORM auto-migrate step or an automatic container-init script - this keeps every schema change auditable and intentional.
 
 ---
 
@@ -50,6 +50,16 @@ Migrations are located in `database/migrations/` and executed in order:
 *   `000001_init.up.sql` / `down.sql`: Creates initial tables, UUID extension, indices, and base user/todo structures.
 *   `000002_add_reminder_features.up.sql` / `down.sql`: Introduces categories, urgency flags, tags, locations, and soft-delete support (`deleted_at`).
 *   `000003_add_user_profile_features.up.sql` / `down.sql`: Appends corporate metadata columns (`company_name`, `designation`, `department`, `date_of_birth`) to the users table.
+
+---
+
+## 🐳 Container Image
+
+The `db` service builds from `database/Dockerfile` (a custom image based on `postgres:16-alpine`), rather than running the upstream image unmodified. It bakes in fintech-grade runtime defaults the bare image doesn't set on its own:
+*   **Defensive timeouts** (`statement_timeout`, `idle_in_transaction_session_timeout`, `lock_timeout`) so a runaway query or an abandoned open transaction can't hold locks or exhaust connections indefinitely.
+*   **Audit-friendly logging** (`log_connections`, `log_disconnections`, `log_statement=ddl`) since this service is the system of record for user credentials and task data.
+
+No host port is exposed for `db` in `docker-compose.yml` - it's reachable only from other containers on the internal Docker network.
 
 ---
 

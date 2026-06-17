@@ -255,12 +255,24 @@ func TestRateLimitMiddleware(t *testing.T) {
 		}
 	})
 
-	t.Run("Get client IP from headers", func(t *testing.T) {
+	t.Run("Get client IP from X-Forwarded-For uses last (proxy-appended) entry", func(t *testing.T) {
+		// The leftmost entries in X-Forwarded-For are attacker-controlled; only the
+		// last entry (appended by our trusted nginx proxy) is trustworthy.
 		req := httptest.NewRequest("GET", "/", nil)
 		req.Header.Set("X-Forwarded-For", "5.6.7.8, 9.10.11.12")
 		ip := getClientIP(req)
-		if ip != "5.6.7.8" {
-			t.Errorf("expected client IP to be parsed as '5.6.7.8', got %s", ip)
+		if ip != "9.10.11.12" {
+			t.Errorf("expected client IP to be parsed as '9.10.11.12', got %s", ip)
+		}
+	})
+
+	t.Run("Get client IP prefers X-Real-IP over X-Forwarded-For", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("X-Forwarded-For", "5.6.7.8, 9.10.11.12")
+		req.Header.Set("X-Real-IP", "203.0.113.7")
+		ip := getClientIP(req)
+		if ip != "203.0.113.7" {
+			t.Errorf("expected client IP to be parsed as '203.0.113.7', got %s", ip)
 		}
 	})
 }

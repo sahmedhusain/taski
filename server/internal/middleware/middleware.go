@@ -269,19 +269,26 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 	}
 }
 
-// getClientIP resolves the actual client IP address by checking proxy headers first
+// getClientIP resolves the actual client IP address by checking trusted proxy headers first.
+//
+// X-Real-IP is checked before X-Forwarded-For because our nginx reverse proxy always
+// overwrites X-Real-IP with the true connecting address ($remote_addr), whereas it
+// appends to (rather than overwrites) any client-supplied X-Forwarded-For value via
+// $proxy_add_x_forwarded_for. Trusting the first X-Forwarded-For entry would let a
+// client spoof its own apparent IP and bypass per-IP rate limiting entirely. If
+// X-Forwarded-For must be used, only the last entry (the one nginx appended) is trusted.
 func getClientIP(r *http.Request) string {
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.Split(xff, ",")
 		if len(parts) > 0 {
-			ip := strings.TrimSpace(parts[0])
+			ip := strings.TrimSpace(parts[len(parts)-1])
 			if ip != "" {
 				return ip
 			}
 		}
-	}
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
 	}
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

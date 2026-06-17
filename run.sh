@@ -31,6 +31,33 @@ read_default() {
     echo "${user_input:-$default_value}"
 }
 
+# Generates a high-entropy random secret (32 random bytes, base64-encoded).
+# Used so no setup path ever defaults to the well-known insecure JWT_SECRET
+# placeholder, which the backend now refuses to boot with in production anyway.
+generate_jwt_secret() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -base64 32
+    else
+        head -c 32 /dev/urandom | base64
+    fi
+}
+
+# Replaces the JWT_SECRET line in a freshly written .env file with a freshly
+# generated random secret, so the "just press Enter / copy .env.example" path
+# is secure by default without requiring the user to remember to do this.
+randomize_jwt_secret_in_env_file() {
+    local env_file=$1
+    local secret
+    secret=$(generate_jwt_secret)
+    local tmp_file
+    tmp_file=$(mktemp)
+    awk -v secret="$secret" '
+        /^JWT_SECRET=/ { print "JWT_SECRET=" secret; next }
+        { print }
+    ' "$env_file" > "$tmp_file" && mv "$tmp_file" "$env_file"
+    echo "Generated a new random JWT_SECRET in $env_file."
+}
+
 # Function to interactive build .env file
 configure_env_manually() {
     echo ""
@@ -47,7 +74,11 @@ configure_env_manually() {
     DB_PASSWORD=$(read_default "Database Password" "postgres")
     DB_NAME=$(read_default "Database Name" "todo")
     DB_SSLMODE=$(read_default "Database SSL Mode" "disable")
-    JWT_SECRET=$(read_default "JWT Secret Key" "super_secure_jwt_secret_change_me_in_production")
+
+    local generated_jwt_secret
+    generated_jwt_secret=$(generate_jwt_secret)
+    echo "A random high-entropy JWT secret has been generated below. Press Enter to accept it, or paste your own."
+    JWT_SECRET=$(read_default "JWT Secret Key" "$generated_jwt_secret")
     CORS_ALLOWED_ORIGINS=$(read_default "CORS Allowed Origins" "http://localhost:3000,http://localhost:5173")
 
     cat <<EOF > .env
@@ -87,6 +118,7 @@ if [ -f .env ]; then
         3)
             echo "Copying .env.example to .env..."
             cp .env.example .env
+            randomize_jwt_secret_in_env_file .env
             ;;
         *)
             echo "Keeping existing .env configuration."
@@ -105,6 +137,7 @@ else
         *)
             echo "Copying .env.example to .env..."
             cp .env.example .env
+            randomize_jwt_secret_in_env_file .env
             ;;
     esac
 fi
