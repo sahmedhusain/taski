@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#0a0a0c"/>
+  <rect x="2" y="2" width="28" height="28" rx="7" fill="url(#favicon-gradient)" stroke="white" stroke-opacity="0.1"/>
+  <g transform="translate(7.5, 8)" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="0" y="0" width="6" height="6" rx="1"/>
+    <path d="m0 12 1.5 1.5L4.5 10"/>
+    <path d="M10 1h7" stroke="#ff453a"/>
+    <path d="M10 7h7"/>
+    <path d="M10 13h7"/>
+  </g>
+  <defs>
+    <linearGradient id="favicon-gradient" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -536,7 +536,15 @@ export const Dashboard = () => {
               </span>
             </button>
             <button
-              onClick={logout}
+              onClick={() => {
+                triggerConfirmModal(
+                  "Sign Out",
+                  "Are you sure you want to sign out?",
+                  "Sign Out",
+                  false,
+                  () => logout()
+                );
+              }}
               className="liquid-btn-secondary px-4 py-2 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
               aria-label="Sign out"
             >
