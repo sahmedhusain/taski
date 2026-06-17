@@ -6,6 +6,7 @@ import "time"
 type User struct {
 	ID           string    `json:"id"`
 	Email        string    `json:"email"`
+	FullName     string    `json:"full_name"`
 	PasswordHash string    `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
 }
@@ -23,6 +24,7 @@ type Todo struct {
 // HTTP API Requests & Responses
 type RegisterRequest struct {
 	Email    string `json:"email"`
+	FullName string `json:"full_name"`
 	Password string `json:"password"`
 }
 
@@ -34,6 +36,7 @@ type LoginRequest struct {
 type UserResponse struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
+	FullName  string    `json:"full_name"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

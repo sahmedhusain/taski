@@ -4,42 +4,114 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100;
+    @apply bg-[#08080a] text-slate-200 antialiased min-h-screen;
+    font-family: 'Outfit', sans-serif;
   }
+}
+
+/* Apple Liquid Glass core styling variables */
+:root {
+  --glass-bg: rgba(18, 18, 22, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-blur: 24px;
 }
 
 /* Glassmorphism utility classes */
 .glass {
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.3);
+}
+
+.liquid-glass {
+  background: rgba(10, 10, 12, 0.65);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 16px 48px -8px rgba(0, 0, 0, 0.6);
+  border-radius: 24px;
+}
+
+/* Liquid Pill Nav bar */
+.liquid-pill-nav {
+  background: rgba(15, 15, 18, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
 }
 
-.glass-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* Premium Apple input styling */
+.liquid-input {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.glass-hover:hover {
-  background: rgba(15, 23, 42, 0.75);
-  border-color: rgba(139, 92, 246, 0.25);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+.liquid-input:focus {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) !important;
 }
 
-/* Modern Web Guidance: Form Interaction & Validation Styling */
+/* Premium White Button style */
+.liquid-btn-primary {
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-weight: 500 !important;
+  border-radius: 9999px !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1) !important;
+}
+
+.liquid-btn-primary:hover {
+  background: #f4f4f5 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.15) !important;
+}
+
+.liquid-btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Cancel / Secondary button style */
+.liquid-btn-secondary {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 9999px !important;
+  transition: all 0.2s !important;
+}
+
+.liquid-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Active tab style inside the pill navigation */
+.liquid-tab-active {
+  background: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Custom form invalid/valid status matching Apple colors */
 input:user-invalid,
-textarea:user-invalid,
-select:user-invalid {
-  @apply border-red-500/50 bg-red-950/20 focus:ring-red-500/50 focus:border-red-500;
+textarea:user-invalid {
+  border-color: rgba(255, 69, 58, 0.4) !important;
+  background: rgba(255, 69, 58, 0.02) !important;
 }
 
 input:user-valid,
-textarea:user-valid,
-select:user-valid {
-  @apply border-emerald-500/50 bg-emerald-950/20 focus:ring-emerald-500/50 focus:border-emerald-500;
+textarea:user-valid {
+  border-color: rgba(48, 209, 88, 0.3) !important;
+  background: rgba(48, 209, 88, 0.01) !important;
 }
 
-/* Reveal error messages adjacent to invalid inputs */
 .error-message {
   display: none;
 }
@@ -49,39 +121,50 @@ textarea:user-invalid + .error-message {
   display: block;
 }
 
-/* Custom visual highlights on forms using the modern :has selector */
 .form-field:has(input:user-invalid) label {
-  @apply text-red-400;
+  color: #ff453a !important;
 }
 
 .form-field:has(input:user-valid) label {
-  @apply text-emerald-400;
+  color: #30d158 !important;
 }
 
-/* Scrollbars */
+/* Premium Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-slate-950;
+  background: #08080a;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-800 rounded-full hover:bg-slate-700 transition-colors;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
 }
 
-/* Custom Pulse/Gradient Animations */
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 0.9;
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* Background glows */
+.glow-blur-purple {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.06) 0%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(120px);
+  pointer-events: none;
+}
+
+.glow-blur-indigo {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(100px);
+  pointer-events: none;
 }

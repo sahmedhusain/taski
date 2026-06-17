@@ -22,7 +22,8 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Outfit', 'sans-serif'],
+        branding: ['"Black Ops One"', 'system-ui', 'sans-serif'],
       }
     },
   },

@@ -49,3 +49,17 @@ func ValidatePassword(password string) error {
 
 	return nil
 }
+
+func ValidateFullName(fullName string) error {
+	if fullName == "" {
+		return nil // optional
+	}
+	if len(fullName) < 2 || len(fullName) > 100 {
+		return errors.New("full name must be between 2 and 100 characters")
+	}
+	validName := regexp.MustCompile(`^[a-zA-Z\s'\-.]+$`)
+	if !validName.MatchString(fullName) {
+		return errors.New("full name can only contain letters, spaces, hyphens, periods, and apostrophes")
+	}
+	return nil
+}

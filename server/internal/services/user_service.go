@@ -40,8 +40,13 @@ func NewUserService(userRepo repository.UserRepository) UserService {
 
 func (s *userService) Register(ctx context.Context, req *models.RegisterRequest) (*models.UserResponse, error) {
 	email := strings.ToLower(strings.TrimSpace(req.Email))
+	fullName := strings.TrimSpace(req.FullName)
 	
 	if err := validation.ValidateEmail(email); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+	
+	if err := validation.ValidateFullName(fullName); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
 	
@@ -65,6 +70,7 @@ func (s *userService) Register(ctx context.Context, req *models.RegisterRequest)
 	user := &models.User{
 		ID:           uuid.NewString(),
 		Email:        email,
+		FullName:     fullName,
 		PasswordHash: string(hashedPassword),
 		CreatedAt:    time.Now().UTC(),
 	}
@@ -76,6 +82,7 @@ func (s *userService) Register(ctx context.Context, req *models.RegisterRequest)
 	return &models.UserResponse{
 		ID:        user.ID,
 		Email:     user.Email,
+		FullName:  user.FullName,
 		CreatedAt: user.CreatedAt,
 	}, nil
 }
@@ -115,6 +122,7 @@ func (s *userService) Login(ctx context.Context, req *models.LoginRequest, jwtSe
 	return tokenString, &models.UserResponse{
 		ID:        user.ID,
 		Email:     user.Email,
+		FullName:  user.FullName,
 		CreatedAt: user.CreatedAt,
 	}, nil
 }
@@ -130,6 +138,7 @@ func (s *userService) GetUserByID(ctx context.Context, id string) (*models.UserR
 	return &models.UserResponse{
 		ID:        user.ID,
 		Email:     user.Email,
+		FullName:  user.FullName,
 		CreatedAt: user.CreatedAt,
 	}, nil
 }
