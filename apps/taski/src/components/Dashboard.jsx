@@ -203,11 +203,11 @@ export const Dashboard = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsProfileModalOpen(true)}
-              className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/[0.04] border border-white/10 text-slate-400 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer"
+              className="flex items-center gap-2 px-3 py-2 sm:px-3.5 sm:py-2 rounded-full bg-white/[0.04] border border-white/10 text-slate-400 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer"
               title="Edit profile info"
             >
               <User className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-semibold text-slate-200">
+              <span className="hidden sm:inline font-semibold text-slate-200">
                 {user?.full_name && user.full_name.trim() ? user.full_name : user?.email}
               </span>
             </button>
