@@ -3,7 +3,10 @@ package validation
 import (
 	"errors"
 	"regexp"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -103,6 +106,88 @@ func ValidateProfileField(field string, fieldName string) error {
 	validChars := regexp.MustCompile(`^[a-zA-Z0-9\s'\-.,&()]*$`)
 	if field != "" && !validChars.MatchString(field) {
 		return errors.New(fieldName + " contains invalid characters")
+	}
+	return nil
+}
+
+func ValidateUUID(id string) error {
+	if _, err := uuid.Parse(id); err != nil {
+		return errors.New("invalid identifier format")
+	}
+	return nil
+}
+
+func ValidateURL(u string) error {
+	if u == "" {
+		return nil
+	}
+	if len(u) > 2048 {
+		return errors.New("url must not exceed 2048 characters")
+	}
+	lower := strings.ToLower(u)
+	if strings.Contains(lower, "javascript:") || strings.Contains(lower, "data:") || strings.Contains(lower, "vbscript:") {
+		return errors.New("unsafe url scheme detected")
+	}
+	return nil
+}
+
+func ValidateTaskTitle(title string) error {
+	if title == "" {
+		return errors.New("title cannot be empty")
+	}
+	if len(title) > 255 {
+		return errors.New("title must not exceed 255 characters")
+	}
+	return nil
+}
+
+func ValidateTaskDescription(desc string) error {
+	if len(desc) > 2000 {
+		return errors.New("description must not exceed 2000 characters")
+	}
+	return nil
+}
+
+func ValidateTaskListName(list string) error {
+	if len(list) > 100 {
+		return errors.New("list name must not exceed 100 characters")
+	}
+	return nil
+}
+
+func ValidateTaskSectionName(section string) error {
+	if len(section) > 100 {
+		return errors.New("section name must not exceed 100 characters")
+	}
+	return nil
+}
+
+func ValidateTaskPriority(priority string) error {
+	if priority == "" {
+		return nil
+	}
+	validPriorities := map[string]bool{
+		"None":   true,
+		"Low":    true,
+		"Medium": true,
+		"High":   true,
+	}
+	if !validPriorities[priority] {
+		return errors.New("invalid task priority level")
+	}
+	return nil
+}
+
+func ValidateTaskLocation(loc string) error {
+	if len(loc) > 500 {
+		return errors.New("location must not exceed 500 characters")
+	}
+	return nil
+}
+
+func ValidateTaskTags(tags string) error {
+	if len(tags) > 500 {
+		return errors.New("tags must not exceed 500 characters")
 	}
 	return nil
 }

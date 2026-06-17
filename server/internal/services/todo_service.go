@@ -9,6 +9,7 @@ import (
 
 	"todo-server/internal/models"
 	"todo-server/internal/repository"
+	"todo-server/internal/validation"
 
 	"github.com/google/uuid"
 )
@@ -74,19 +75,49 @@ func validateDueDateTime(dueDate *time.Time, dueTime string) error {
 }
 
 func (s *todoService) Create(ctx context.Context, userID string, req *models.CreateTodoRequest) (*models.Todo, error) {
+	if err := validation.ValidateUUID(userID); err != nil {
+		return nil, fmt.Errorf("invalid user id: %w", err)
+	}
+
 	title := strings.TrimSpace(req.Title)
-	if title == "" {
-		return nil, errors.New("title cannot be empty")
+	if err := validation.ValidateTaskTitle(title); err != nil {
+		return nil, err
+	}
+
+	if err := validation.ValidateTaskDescription(req.Description); err != nil {
+		return nil, err
+	}
+
+	if err := validation.ValidateURL(req.URL); err != nil {
+		return nil, err
 	}
 
 	listName := strings.TrimSpace(req.ListName)
+	if err := validation.ValidateTaskListName(listName); err != nil {
+		return nil, err
+	}
 	if listName == "" {
 		listName = "Todos"
 	}
 
 	priority := strings.TrimSpace(req.Priority)
+	if err := validation.ValidateTaskPriority(priority); err != nil {
+		return nil, err
+	}
 	if priority == "" {
 		priority = "None"
+	}
+
+	if err := validation.ValidateTaskLocation(req.Location); err != nil {
+		return nil, err
+	}
+
+	if err := validation.ValidateTaskTags(req.Tags); err != nil {
+		return nil, err
+	}
+
+	if err := validation.ValidateTaskSectionName(req.SectionName); err != nil {
+		return nil, err
 	}
 
 	dueDate := parseDueDate(req.DueDate)
@@ -123,6 +154,13 @@ func (s *todoService) Create(ctx context.Context, userID string, req *models.Cre
 }
 
 func (s *todoService) GetByID(ctx context.Context, userID, id string) (*models.Todo, error) {
+	if err := validation.ValidateUUID(id); err != nil {
+		return nil, fmt.Errorf("%w: invalid todo id: %v", ErrInvalidInput, err)
+	}
+	if err := validation.ValidateUUID(userID); err != nil {
+		return nil, fmt.Errorf("%w: invalid user id: %v", ErrInvalidInput, err)
+	}
+
 	todo, err := s.todoRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -137,14 +175,69 @@ func (s *todoService) GetByID(ctx context.Context, userID, id string) (*models.T
 }
 
 func (s *todoService) GetByUserID(ctx context.Context, userID string) ([]*models.Todo, error) {
+	if err := validation.ValidateUUID(userID); err != nil {
+		return nil, fmt.Errorf("%w: invalid user id: %v", ErrInvalidInput, err)
+	}
 	return s.todoRepo.GetByUserID(ctx, userID)
 }
 
 func (s *todoService) GetDeletedByUserID(ctx context.Context, userID string) ([]*models.Todo, error) {
+	if err := validation.ValidateUUID(userID); err != nil {
+		return nil, fmt.Errorf("%w: invalid user id: %v", ErrInvalidInput, err)
+	}
 	return s.todoRepo.GetDeletedByUserID(ctx, userID)
 }
 
 func (s *todoService) Update(ctx context.Context, userID, id string, req *models.UpdateTodoRequest) (*models.Todo, error) {
+	if err := validation.ValidateUUID(id); err != nil {
+		return nil, fmt.Errorf("%w: invalid todo id: %v", ErrInvalidInput, err)
+	}
+	if err := validation.ValidateUUID(userID); err != nil {
+		return nil, fmt.Errorf("%w: invalid user id: %v", ErrInvalidInput, err)
+	}
+
+	// Validate inputs first (SEC-03, SEC-05)
+	if req.Title != "" {
+		if err := validation.ValidateTaskTitle(strings.TrimSpace(req.Title)); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
+	}
+	if req.Description != "" {
+		if err := validation.ValidateTaskDescription(req.Description); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
+	}
+	if req.URL != "" {
+		if err := validation.ValidateURL(req.URL); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
+	}
+	if req.ListName != "" {
+		if err := validation.ValidateTaskListName(strings.TrimSpace(req.ListName)); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
+	}
+	if req.Priority != "" {
+		if err := validation.ValidateTaskPriority(strings.TrimSpace(req.Priority)); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
+	}
+	if req.Location != "" {
+		if err := validation.ValidateTaskLocation(req.Location); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
+	}
+	if req.Tags != "" {
+		if err := validation.ValidateTaskTags(req.Tags); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
+	}
+	if req.SectionName != nil {
+		if err := validation.ValidateTaskSectionName(*req.SectionName); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		}
+	}
+
 	todo, err := s.todoRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -259,6 +352,13 @@ func (s *todoService) Update(ctx context.Context, userID, id string, req *models
 }
 
 func (s *todoService) Delete(ctx context.Context, userID, id string) error {
+	if err := validation.ValidateUUID(id); err != nil {
+		return fmt.Errorf("%w: invalid todo id: %v", ErrInvalidInput, err)
+	}
+	if err := validation.ValidateUUID(userID); err != nil {
+		return fmt.Errorf("%w: invalid user id: %v", ErrInvalidInput, err)
+	}
+
 	todo, err := s.todoRepo.GetByID(ctx, id)
 	if err != nil {
 		return err
@@ -273,6 +373,13 @@ func (s *todoService) Delete(ctx context.Context, userID, id string) error {
 }
 
 func (s *todoService) HardDelete(ctx context.Context, userID, id string) error {
+	if err := validation.ValidateUUID(id); err != nil {
+		return fmt.Errorf("%w: invalid todo id: %v", ErrInvalidInput, err)
+	}
+	if err := validation.ValidateUUID(userID); err != nil {
+		return fmt.Errorf("%w: invalid user id: %v", ErrInvalidInput, err)
+	}
+
 	todo, err := s.todoRepo.GetByID(ctx, id)
 	if err != nil {
 		return err
@@ -287,6 +394,13 @@ func (s *todoService) HardDelete(ctx context.Context, userID, id string) error {
 }
 
 func (s *todoService) Restore(ctx context.Context, userID, id string) error {
+	if err := validation.ValidateUUID(id); err != nil {
+		return fmt.Errorf("%w: invalid todo id: %v", ErrInvalidInput, err)
+	}
+	if err := validation.ValidateUUID(userID); err != nil {
+		return fmt.Errorf("%w: invalid user id: %v", ErrInvalidInput, err)
+	}
+
 	todo, err := s.todoRepo.GetByID(ctx, id)
 	if err != nil {
 		return err

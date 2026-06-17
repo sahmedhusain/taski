@@ -28,6 +28,11 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
+	// Security Check (SEC-07): Warn if running in production with default secrets
+	if cfg.Environment == "production" && string(cfg.JWTSecret) == "super_secure_jwt_secret_change_me_in_production" {
+		log.Println("[SECURITY WARNING] JWT_SECRET is set to the default fallback value in a production environment! This is a major security risk. Please configure a unique, high-entropy key.")
+	}
+
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode)
 

@@ -240,6 +240,10 @@ func (h *Handler) GetTodoByID(w http.ResponseWriter, r *http.Request) {
 
 	todo, err := h.todoService.GetByID(r.Context(), userID, todoID)
 	if err != nil {
+		if errors.Is(err, services.ErrInvalidInput) {
+			h.respondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		if errors.Is(err, services.ErrNotFound) {
 			h.respondWithError(w, http.StatusNotFound, "todo not found")
 			return
@@ -276,6 +280,10 @@ func (h *Handler) UpdateTodo(w http.ResponseWriter, r *http.Request) {
 
 	todo, err := h.todoService.Update(r.Context(), userID, todoID, &req)
 	if err != nil {
+		if errors.Is(err, services.ErrInvalidInput) {
+			h.respondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		if errors.Is(err, services.ErrNotFound) {
 			h.respondWithError(w, http.StatusNotFound, "todo not found")
 			return
@@ -312,6 +320,10 @@ func (h *Handler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
+		if errors.Is(err, services.ErrInvalidInput) {
+			h.respondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		if errors.Is(err, services.ErrNotFound) {
 			h.respondWithError(w, http.StatusNotFound, "todo not found")
 			return

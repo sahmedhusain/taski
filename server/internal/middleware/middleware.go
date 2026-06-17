@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -96,6 +97,16 @@ func CORSMiddleware(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 
+			// Block state-changing requests if Origin is set but not allowed (CSRF/cross-origin protection)
+			if origin != "" && !allowed {
+				if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete || r.Method == http.MethodPatch {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					_, _ = w.Write([]byte(`{"error":"CORS policy: cross-origin state changes are forbidden"}`))
+					return
+				}
+			}
+
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -157,11 +168,7 @@ func (rl *RateLimiter) cleanupClients() {
 func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip, _, err := net.SplitHostPort(r.RemoteAddr)
-			if err != nil {
-				ip = r.RemoteAddr
-			}
-
+			ip := getClientIP(r)
 			limiter := rl.getLimiter(ip)
 			if !limiter.Allow() {
 				w.Header().Set("Content-Type", "application/json")
@@ -173,6 +180,27 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// getClientIP resolves the actual client IP address by checking proxy headers first
+func getClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		if len(parts) > 0 {
+			ip := strings.TrimSpace(parts[0])
+			if ip != "" {
+				return ip
+			}
+		}
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }
 
 // RecoveryMiddleware catches panics and prevents crashes
