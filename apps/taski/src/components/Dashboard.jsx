@@ -702,7 +702,7 @@ export const Dashboard = () => {
                           key={todo.id}
                           className={`liquid-glass liquid-interactive p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
                             todo.is_completed ? 'opacity-50 border-emerald-950/10' : ''
-                          }`}
+                          } ${activeDropdownId === todo.id ? 'z-20' : 'z-10'}`}
                         >
                           <div className="flex items-start gap-3.5 flex-1 min-w-0">
                             {/* Circular iOS-Style Checklist Checkbox */}

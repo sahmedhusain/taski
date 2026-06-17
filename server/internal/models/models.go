@@ -96,7 +96,7 @@ type UpdateTodoRequest struct {
 	IsFlagged   *bool   `json:"is_flagged"`
 	Priority    string  `json:"priority"`
 	Location    string  `json:"location"`
-	SectionName string  `json:"section_name"`
+	SectionName *string `json:"section_name"`
 	IsCompleted *bool   `json:"is_completed"`
 	Restore     *bool   `json:"restore"`
 }

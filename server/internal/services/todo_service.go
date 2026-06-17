@@ -177,8 +177,8 @@ func (s *todoService) Update(ctx context.Context, userID, id string, req *models
 		todo.Location = req.Location
 		updated = true
 	}
-	if req.SectionName != "" {
-		todo.SectionName = req.SectionName
+	if req.SectionName != nil {
+		todo.SectionName = strings.TrimSpace(*req.SectionName)
 		updated = true
 	}
 
