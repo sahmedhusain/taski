@@ -163,6 +163,10 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 			h.respondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		if errors.Is(err, services.ErrEmailTaken) {
+			h.respondWithError(w, http.StatusConflict, "email is already registered")
+			return
+		}
 		h.respondWithError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
