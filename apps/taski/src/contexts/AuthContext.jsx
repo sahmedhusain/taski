@@ -37,6 +37,42 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const lockoutUntil = Number(localStorage.getItem('lockout_until') || '0');
+      const url = typeof args[0] === 'string' ? args[0] : args[0].url;
+
+      if (Date.now() < lockoutUntil) {
+        if (url.includes('/api/auth') || url.includes('/api/todo')) {
+          const remainingMs = lockoutUntil - Date.now();
+          const timeString = remainingMs > 60000 
+            ? `${Math.ceil(remainingMs / 60000)} minute(s)` 
+            : `${Math.ceil(remainingMs / 1000)} second(s)`;
+
+          return new Response(JSON.stringify({ 
+            error: `Too many requests. You have been locked out. Please try again in ${timeString}.` 
+          }), {
+            status: 429,
+            statusText: 'Too Many Requests',
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      const response = await originalFetch(...args);
+      if (response.status === 429) {
+        localStorage.setItem('lockout_until', (Date.now() + 5 * 60 * 1000).toString());
+        setUser(null);
+      }
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
+  useEffect(() => {
     checkMe();
   }, []);
 
