@@ -44,7 +44,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if errors.Is(err, services.ErrInvalidInput) {
-			h.respondWithError(w, http.StatusBadRequest, "invalid email or password (min length 8)")
+			h.respondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		h.respondWithError(w, http.StatusInternalServerError, "internal server error")

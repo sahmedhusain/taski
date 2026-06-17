@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -41,11 +42,11 @@ func (s *userService) Register(ctx context.Context, req *models.RegisterRequest)
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 	
 	if err := validation.ValidateEmail(email); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
 	
 	if err := validation.ValidatePassword(req.Password); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
 
 	existingUser, err := s.userRepo.GetByEmail(ctx, email)
